@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nizanim-postgres
+    environment:
+      POSTGRES_DB: statuspage
+      POSTGRES_USER: statuspage
+      POSTGRES_PASSWORD: nizanim-local-db-password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U statuspage -d statuspage"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: nizanim-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  status-page:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nizanim-status-page
+    environment:
+      POSTGRES_DB: statuspage
+      POSTGRES_USER: statuspage
+      POSTGRES_PASSWORD: nizanim-local-db-password
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      SITE_URL: "http://localhost:8000"
+      SECRET_KEY: "local-development-only-nizanim-secret-key-change-before-aws-123456789"
+      DEBUG: "True"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - statuspage_media:/opt/status-page/statuspage/media
+    command:
+      - /bin/sh
+      - -c
+      - |
+        c --noinput
+        python manage.py collectstatic --noinput
+        exec python manage.py runserver 0.0.0.0:8000 --insecure
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  statuspage_media:
