@@ -157,6 +157,34 @@ jobs:
           echo "RQ worker registrations found: $WORKER_COUNT"
           test "$WORKER_COUNT" -ge 1
 
+      - name: Test complete RQ job lifecycle
+        run: |
+          docker compose exec -T status-page python manage.py shell -c "
+          import time
+          import operator
+          import django_rq
+
+          queue = django_rq.get_queue('default')
+          job = queue.enqueue(operator.add, 2, 3, result_ttl=60)
+          print(f'Enqueued RQ test job: {job.id}')
+
+          for attempt in range(30):
+              job.refresh()
+
+              if job.is_finished:
+                  assert job.result == 5, f'Unexpected RQ result: {job.result}'
+                  print('RQ lifecycle integration test passed: 2 + 3 = 5')
+                  break
+
+              if job.is_failed:
+                  raise RuntimeError(f'RQ job failed:\n{job.exc_info}')
+
+              print(f'Waiting for RQ worker... attempt {attempt + 1}/30')
+              time.sleep(1)
+          else:
+              raise TimeoutError('RQ worker did not finish the test job within 30 seconds')
+          "
+
       - name: Show Docker Compose status
         if: always()
         run: docker compose ps
