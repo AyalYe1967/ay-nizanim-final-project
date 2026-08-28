@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nizanim-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: nizanim-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  status-page:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nizanim-status-page
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - statuspage_media:/opt/status-page/statuspage/media
+    command:
+      - /bin/sh
+      - -c
+      - |
+        python manage.py migrate --noinput
+        python manage.py collectstatic --noinput
+        exec python manage.py runserver 0.0.0.0:8000 --insecure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  rq-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nizanim-rq-worker
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      status-page:
+        condition: service_healthy
+    command: ["python", "manage.py", "rqworker", "high", "default", "low"]
+    restart: unless-stopped
+
+  rq-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nizanim-rq-scheduler
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      status-page:
+        condition: service_healthy
+    command: ["python", "manage.py", "rqscheduler"]
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  statuspage_media:

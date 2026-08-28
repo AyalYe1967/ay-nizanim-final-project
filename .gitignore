@@ -5,3 +5,6 @@ bootstrap/.terraform/
 *.tfvars
 tfplan
 destroy-plan
+.env
+__pycache__/
+*.pyc
