@@ -1,0 +1,66 @@
+# monitoring/prometheus/prometheus.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: ay-l-final-project
+
+scrape_configs:
+  # Prometheus scraping itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Django web app - requires the app to expose a Prometheus /metrics endpoint
+  # (e.g. via django-prometheus). NOT CONFIRMED YET that Status-Page has this.
+  # If it doesn't, this job just shows as DOWN - harmless, but won't collect
+  # real app metrics until added on the app side.
+  - job_name: 'web'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['web:8000']
+
+  # RQ worker - rq-exporter sidecar, already wired via Service Connect in ecs.tf
+  - job_name: 'worker'
+    static_configs:
+      - targets: ['worker:8888']
+
+  # RQ scheduler - same rq-exporter sidecar pattern as worker
+  - job_name: 'scheduler'
+    static_configs:
+      - targets: ['scheduler:8888']
+
+  # Deep health check (DB/Redis dependency) via blackbox_exporter, per
+  # Master Plan 3.2/5.2 - probes /health/, not /ping/. blackbox_exporter is
+  # planned as a sidecar container in the SAME ECS task as Prometheus
+  # (awsvpc networking -> reachable at localhost). NOT YET ADDED to
+  # monitoring.tf - needs a second container definition there.
+  - job_name: 'blackbox-health'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://web:8000/health/
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115  # TODO: blackbox-exporter sidecar port, once added to monitoring.tf
+
+# Long-term storage: local TSDB is only a 2h buffer (see Dockerfile).
+# Real persistence happens via remote_write to Amazon Managed Service
+# for Prometheus (AMP).
+remote_write:
+  - url: "https://aps-workspaces.us-east-1.amazonaws.com/workspaces/TODO_AMP_WORKSPACE_ID/api/v1/remote_write"
+    # TODO: replace TODO_AMP_WORKSPACE_ID with the real workspace ID,
+    # output from the aws_prometheus_workspace resource (modules/amp)
+    sigv4:
+      region: us-east-1
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 10
+      min_backoff: 30ms

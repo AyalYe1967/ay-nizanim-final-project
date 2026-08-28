@@ -1,0 +1,132 @@
+{
+  "uid": "rq-worker-scheduler",
+  "title": "RQ Worker / Scheduler",
+  "description": "RQ (Redis Queue) metrics via rq-exporter, for the worker and scheduler ECS services. Rebuilt with modern panel types (timeseries/stat/table) from the community rq-exporter dashboard (grafana.com id 12196), which used Angular-based panels no longer supported from Grafana 12 onward.",
+  "tags": ["rq", "worker", "scheduler"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {"id": 1, "type": "row", "title": "Overview", "collapsed": false, "gridPos": {"x": 0, "y": 0, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 2, "type": "stat", "title": "RQ Workers", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 1, "w": 6, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "count(rq_workers{job=~\"$job\", instance=~\"$instance\"}) or vector(0)", "refId": "A", "legendFormat": "Workers"}]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Avg. data collection duration", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 6, "y": 1, "w": 6, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 3, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(rq_request_processing_seconds_sum{job=~\"$job\", instance=~\"$instance\"}[$__range]) / rate(rq_request_processing_seconds_count{job=~\"$job\", instance=~\"$instance\"}[$__range])", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Worker capacity (busy vs idle)", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 12, "y": 1, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "percent", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(count(rq_workers{state=\"busy\", job=~\"$job\", instance=~\"$instance\"}) / count(rq_workers{job=~\"$job\", instance=~\"$instance\"})) * 100", "refId": "A", "legendFormat": "Busy workers"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(count(rq_workers{state=\"idle\", job=~\"$job\", instance=~\"$instance\"}) / count(rq_workers{job=~\"$job\", instance=~\"$instance\"})) * 100", "refId": "B", "legendFormat": "Idle workers"}
+      ]
+    },
+    {
+      "id": 5, "type": "table", "title": "Current jobs overview (by queue & status)", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}}}, "overrides": []},
+      "options": {"showHeader": true},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"}) by (queue, status)", "refId": "A", "legendFormat": "", "instant": true, "format": "table"}]
+    },
+    {"id": 6, "type": "row", "title": "Jobs by status", "collapsed": false, "gridPos": {"x": 0, "y": 13, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 7, "type": "stat", "title": "Queued", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 14, "w": 4, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{status=\"queued\", job=~\"$job\", instance=~\"$instance\", queue=~\"$queue\"}) / sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"})", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 8, "type": "stat", "title": "Started", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 4, "y": 14, "w": 4, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{status=\"started\", job=~\"$job\", instance=~\"$instance\", queue=~\"$queue\"}) / sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"})", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 9, "type": "stat", "title": "Finished", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 8, "y": 14, "w": 4, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{status=\"finished\", job=~\"$job\", instance=~\"$instance\", queue=~\"$queue\"}) / sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"})", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 10, "type": "stat", "title": "Failed", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 12, "y": 14, "w": 4, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{status=\"failed\", job=~\"$job\", instance=~\"$instance\", queue=~\"$queue\"}) / sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"})", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 11, "type": "stat", "title": "Deferred", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 16, "y": 14, "w": 4, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{status=\"deferred\", job=~\"$job\", instance=~\"$instance\", queue=~\"$queue\"}) / sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"})", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 12, "type": "stat", "title": "Scheduled", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 20, "y": 14, "w": 4, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{status=\"scheduled\", job=~\"$job\", instance=~\"$instance\", queue=~\"$queue\"}) / sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"})", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Number of jobs by status", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 18, "w": 24, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{job=~\"$job\", instance=~\"$instance\", queue=~\"$queue\"}) by (status)", "refId": "A", "legendFormat": "{{status}}"}]
+    },
+    {"id": 14, "type": "row", "title": "Jobs by queue", "collapsed": false, "gridPos": {"x": 0, "y": 26, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 15, "type": "timeseries", "title": "Number of jobs by queue", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 27, "w": 24, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"}) by (queue)", "refId": "A", "legendFormat": "{{queue}}"}]
+    },
+    {"id": 16, "type": "row", "title": "Jobs by status and queue", "collapsed": false, "gridPos": {"x": 0, "y": 35, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 17, "type": "timeseries", "title": "Number of jobs by status and queue", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 36, "w": 24, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rq_jobs{job=~\"$job\", instance=~\"$instance\"}) by (queue, status)", "refId": "A", "legendFormat": "{{queue}} ({{status}})"}]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "job", "type": "query", "label": "Job", "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": {"query": "label_values({__name__=~\"rq_.*\"}, job)", "refId": "job"},
+        "refresh": 2, "multi": false, "includeAll": false, "current": {}
+      },
+      {
+        "name": "instance", "type": "query", "label": "Instance", "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": {"query": "label_values(rq_workers{job=~\"$job\"}, instance)", "refId": "instance"},
+        "refresh": 2, "multi": false, "includeAll": false, "current": {}
+      },
+      {
+        "name": "queue", "type": "query", "label": "Queue", "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": {"query": "label_values(rq_jobs{job=~\"$job\", instance=~\"$instance\"}, queue)", "refId": "queue"},
+        "refresh": 2, "multi": true, "includeAll": true, "current": {}
+      }
+    ]
+  }
+}

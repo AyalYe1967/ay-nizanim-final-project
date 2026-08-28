@@ -1,0 +1,40 @@
+# monitoring/grafana/provisioning/datasources/datasources.yml
+apiVersion: 1
+
+datasources:
+  # --- Local Prometheus, via Service Connect (already wired, works today) ---
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: ${PROMETHEUS_URL}          # env var already set in monitoring.tf ("http://prometheus:9090")
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"           
+
+  - name: Amazon Managed Prometheus
+    type: prometheus
+    uid: amp
+    access: proxy
+    # TODO: replace with the real query URL once modules/amp exists -
+    # output of aws_prometheus_workspace, format:
+    # https://aps-workspaces.<region>.amazonaws.com/workspaces/<workspace-id>
+    url: https://aps-workspaces.us-east-1.amazonaws.com/workspaces/TODO_AMP_WORKSPACE_ID
+    isDefault: false
+    editable: false
+    jsonData:
+      httpMethod: GET
+      sigV4Auth: true
+      sigV4AuthType: default        
+      sigV4Region: us-east-1
+
+  # --- CloudWatch, for ECS/RDS/ALB metrics - direct datasource, no cloudwatch_exporter ---
+  - name: CloudWatch
+    type: cloudwatch
+    uid: cloudwatch
+    isDefault: false
+    editable: false
+    jsonData:
+      authType: default             
+      defaultRegion: us-east-1
