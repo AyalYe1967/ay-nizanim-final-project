@@ -28,10 +28,8 @@ jobs:
       POSTGRES_PASSWORD: ci-unit-tests-not-used
       POSTGRES_HOST: 127.0.0.1
       POSTGRES_PORT: "5432"
-
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: "6379"
-
       ALLOWED_HOSTS: "localhost,127.0.0.1"
       SITE_URL: "http://localhost:8000"
       SECRET_KEY: "ci-only-django-secret-key-not-used-outside-github-actions"
@@ -71,3 +69,130 @@ jobs:
         working-directory: status-page/statuspage
         run: |
           python manage.py test components.tests metrics.tests --verbosity 2
+
+  integration-tests:
+    name: Integration Tests
+    needs: unit-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create CI environment file
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_DB=statuspage
+          POSTGRES_USER=statuspage
+          POSTGRES_PASSWORD=ci-integration-db-password
+          POSTGRES_HOST=postgres
+          POSTGRES_PORT=5432
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          REDIS_PASSWORD=
+          ALLOWED_HOSTS=*
+          SITE_URL=http://localhost:8000
+          SECRET_KEY=ci-only-integration-secret-key-not-for-production
+          DEBUG=false
+          TIME_ZONE=UTC
+          EOF
+
+      - name: Validate Docker Compose
+        run: docker compose config
+
+      - name: Build and start integration stack
+        run: docker compose up --build -d
+
+      - name: Wait for Status-Page
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:8000/ > /dev/null; then
+              echo "Status-Page is responding"
+              exit 0
+            fi
+            echo "Waiting for Status-Page... attempt $i/30"
+            sleep 5
+          done
+          echo "Status-Page did not become ready"
+          exit 1
+
+      - name: Verify containers are running
+        run: |
+          test "$(docker inspect -f '{{.State.Running}}' nizanim-postgres)" = "true"
+          test "$(docker inspect -f '{{.State.Running}}' nizanim-redis)" = "true"
+          test "$(docker inspect -f '{{.State.Running}}' nizanim-status-page)" = "true"
+          test "$(docker inspect -f '{{.State.Running}}' nizanim-rq-worker)" = "true"
+          test "$(docker inspect -f '{{.State.Running}}' nizanim-rq-scheduler)" = "true"
+
+      - name: Test HTTP response
+        run: |
+          curl --fail --silent --show-error http://127.0.0.1:8000/ > /dev/null
+          echo "HTTP GET / returned success"
+
+      - name: Test Django to PostgreSQL connection
+        run: |
+          docker compose exec -T status-page python manage.py shell -c "
+          from django.db import connection
+          cursor = connection.cursor()
+          cursor.execute('SELECT 1')
+          result = cursor.fetchone()[0]
+          assert result == 1
+          print('PostgreSQL integration test passed')
+          "
+
+      - name: Test Django cache to Redis DB 1
+        run: |
+          docker compose exec -T status-page python manage.py shell -c "
+          from django.core.cache import cache
+          cache.set('ci_integration_test', 'works', 60)
+          result = cache.get('ci_integration_test')
+          assert result == 'works'
+          cache.delete('ci_integration_test')
+          print('Redis cache integration test passed')
+          "
+
+      - name: Verify RQ worker registered in Redis DB 0
+        run: |
+          WORKER_COUNT=$(docker compose exec -T redis redis-cli -n 0 --scan --pattern 'rq:worker:*' | wc -l)
+          echo "RQ worker registrations found: $WORKER_COUNT"
+          test "$WORKER_COUNT" -ge 1
+
+      - name: Test complete RQ job lifecycle
+        run: |
+          docker compose exec -T status-page python manage.py shell -c "
+          import time
+          import operator
+          import django_rq
+
+          queue = django_rq.get_queue('default')
+          job = queue.enqueue(operator.add, 2, 3, result_ttl=60)
+          print(f'Enqueued RQ test job: {job.id}')
+
+          for attempt in range(30):
+              job.refresh()
+
+              if job.is_finished:
+                  assert job.result == 5, f'Unexpected RQ result: {job.result}'
+                  print('RQ lifecycle integration test passed: 2 + 3 = 5')
+                  break
+
+              if job.is_failed:
+                  raise RuntimeError(f'RQ job failed:\n{job.exc_info}')
+
+              print(f'Waiting for RQ worker... attempt {attempt + 1}/30')
+              time.sleep(1)
+          else:
+              raise TimeoutError('RQ worker did not finish the test job within 30 seconds')
+          "
+
+      - name: Show Docker Compose status
+        if: always()
+        run: docker compose ps
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop integration stack
+        if: always()
+        run: docker compose down -v
