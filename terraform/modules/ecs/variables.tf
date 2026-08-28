@@ -116,6 +116,95 @@ variable "redis_port" {
   default = 6379
 }
 
+variable "execution_role_arn" {
+  description = "ARN of the pre-existing ECS Task Execution Role (managed manually, not by Terraform)"
+  type        = string
+}
+
+variable "task_role_arn" {
+  description = "ARN of the pre-existing ECS Task Role (managed manually, not by Terraform)"
+  type        = string
+}
+
+# =========================================================
+# Prometheus + Grafana (monitoring services)
+# =========================================================
+variable "prometheus_ecr_repository_url" {
+  description = "ECR repository URL for the Prometheus image"
+  type        = string
+}
+
+variable "grafana_ecr_repository_url" {
+  description = "ECR repository URL for the Grafana image"
+  type        = string
+}
+
+variable "prometheus_image_tag" {
+  type    = string
+  default = "latest"
+}
+
+variable "grafana_image_tag" {
+  type    = string
+  default = "latest"
+}
+
+variable "ecs_monitoring_security_group_id" {
+  description = "Security group ID for Prometheus and Grafana tasks, created in the VPC module"
+  type        = string
+}
+
+variable "grafana_target_group_arn" {
+  description = "ALB target group ARN for the Grafana service (from the alb_grafana module)"
+  type        = string
+}
+
+variable "prometheus_port" {
+  type    = number
+  default = 9090
+}
+
+variable "grafana_port" {
+  type    = number
+  default = 3000
+}
+
+variable "rq_exporter_port" {
+  description = "Port the rq-exporter sidecar listens on, for worker/scheduler metrics"
+  type        = number
+  default     = 8888
+}
+
+variable "prometheus_desired_count" {
+  type    = number
+  default = 1
+}
+
+variable "grafana_desired_count" {
+  type    = number
+  default = 1
+}
+
+variable "prometheus_cpu" {
+  type    = number
+  default = 256
+}
+
+variable "prometheus_memory" {
+  type    = number
+  default = 512
+}
+
+variable "grafana_cpu" {
+  type    = number
+  default = 256
+}
+
+variable "grafana_memory" {
+  type    = number
+  default = 512
+}
+
 variable "tags" {
   type = map(string)
   default = {

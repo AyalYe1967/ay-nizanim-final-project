@@ -52,11 +52,6 @@ variable "single_nat_gateway" {
   default     = false
 }
 
-variable "ssh_allowed_cidr" {
-  description = "CIDR block allowed to SSH into Jenkins/Monitoring EC2 instances. MUST be a specific IP as /32, e.g. \"203.0.113.7/32\" - never 0.0.0.0/0."
-  type        = string
-}
-
 variable "container_port" {
   description = "Port the Django app listens on inside the ECS task"
   type        = number
@@ -67,6 +62,7 @@ variable "tags" {
   description = "Common tags applied to all resources"
   type        = map(string)
   default = {
-    "Owner" = "ayal"
+    "Owner" = "ayal",
+    "project" = "final_project"
   }
 }

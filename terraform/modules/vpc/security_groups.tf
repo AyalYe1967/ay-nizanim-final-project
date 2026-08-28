@@ -47,6 +47,14 @@ resource "aws_security_group" "ecs_web" {
     security_groups = [aws_security_group.alb.id]
   }
 
+  ingress {
+    description     = "Metrics scrape from Prometheus"
+    from_port       = var.container_port
+    to_port         = var.container_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_monitoring.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -59,12 +67,20 @@ resource "aws_security_group" "ecs_web" {
   })
 }
 
-# ECS Worker/Scheduler SG: 
+# ECS Worker/Scheduler SG:
 
 resource "aws_security_group" "ecs_worker" {
   name        = "${var.project_name}-ecs-worker-sg"
-  description = "No inbound rules - worker/scheduler are not exposed to any load balancer"
+  description = "No public exposure - worker/scheduler are not behind any load balancer. Prometheus scrapes metrics internally."
   vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Metrics scrape from Prometheus (rq-exporter sidecar)"
+    from_port       = 8888
+    to_port         = 8888
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_monitoring.id]
+  }
 
   egress {
     from_port   = 0
@@ -118,34 +134,20 @@ resource "aws_security_group" "redis" {
   })
 }
 
-# Monitoring EC2 SG: SSH + Prometheus + Grafana 
-resource "aws_security_group" "monitoring" {
-  name        = "${var.project_name}-monitoring-sg"
-  description = "Allow SSH, Prometheus and Grafana access"
+# Grafana ALB SG: public entry point for the Grafana dashboard
+# NOTE: 0.0.0.0/0 is a deliberate temporary choice - tighten to a specific
+# CIDR (e.g. office/VPN IP) before treating this as production-grade.
+resource "aws_security_group" "grafana_alb" {
+  name        = "${var.project_name}-grafana-alb-sg"
+  description = "Public entry point for Grafana - temporarily open, tighten before production"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
+    description = "Grafana UI (temporary - open to internet)"
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = [var.ssh_allowed_cidr]
-  }
-
-  ingress {
-    description = "Prometheus"
-    from_port   = 9090
-    to_port     = 9090
-    protocol    = "tcp"
-    cidr_blocks = [var.ssh_allowed_cidr]
-  }
-
-  ingress {
-    description = "Grafana"
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = [var.ssh_allowed_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -156,6 +158,34 @@ resource "aws_security_group" "monitoring" {
   }
 
   tags = merge(local.common_tags, {
-    Name = "${var.project_name}-monitoring-sg"
+    Name = "${var.project_name}-grafana-alb-sg"
+  })
+}
+
+# ECS Monitoring SG: Prometheus + Grafana Fargate tasks
+# Grafana only reachable from its ALB. Prometheus has no public/ALB exposure -
+# it is reached internally via ECS Service Connect.
+resource "aws_security_group" "ecs_monitoring" {
+  name        = "${var.project_name}-ecs-monitoring-sg"
+  description = "Prometheus and Grafana ECS tasks - Grafana ingress from its ALB only"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Grafana UI from Grafana ALB"
+    from_port       = 3000
+    to_port         = 3000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.grafana_alb.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-ecs-monitoring-sg"
   })
 }

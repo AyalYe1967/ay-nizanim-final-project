@@ -1,14 +1,14 @@
-output "repository_url" {
-  description = "URL of the ECR repository (used for docker push/pull and ECS task definitions)"
-  value       = aws_ecr_repository.status_page.repository_url
+output "repository_urls" {
+  description = "Map of repo key (app/prometheus/grafana) to repository URL"
+  value       = { for k, r in aws_ecr_repository.this : k => r.repository_url }
 }
 
-output "repository_arn" {
-  description = "ARN of the ECR repository (used for IAM policy scoping)"
-  value       = aws_ecr_repository.status_page.arn
+output "repository_arns" {
+  description = "Map of repo key to repository ARN"
+  value       = { for k, r in aws_ecr_repository.this : k => r.arn }
 }
 
-output "repository_name" {
-  description = "Name of the ECR repository"
-  value       = aws_ecr_repository.status_page.name
+output "repository_names" {
+  description = "Map of repo key to full repository name"
+  value       = { for k, r in aws_ecr_repository.this : k => r.name }
 }

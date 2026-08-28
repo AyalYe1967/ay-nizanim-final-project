@@ -12,6 +12,16 @@ resource "aws_ecs_cluster" "main" {
   tags = var.tags
 }
 
+# --- Service Connect namespace: internal DNS for ECS-to-ECS communication ---
+# Replaces the file_sd_config + external discovery tool from the original
+# EC2-based Master Plan (section 3.2) - Fargate tasks get stable internal DNS
+# names (web, worker, scheduler, prometheus) that Prometheus scrapes directly.
+resource "aws_service_discovery_http_namespace" "internal" {
+  name        = "ay-l-final-project.internal"
+  description = "Service Connect namespace for ECS-to-ECS communication (web, worker, scheduler, prometheus)"
+  tags        = var.tags
+}
+
 # --- CloudWatch Log Groups (one per service, per master plan 5.1) ---
 resource "aws_cloudwatch_log_group" "web" {
   name              = "/ecs/ay-l-final-project/web"
@@ -33,6 +43,8 @@ resource "aws_cloudwatch_log_group" "scheduler" {
 
 # =========================================================
 # Web — behind the ALB, container-level HEALTHCHECK on /ping/
+# Registered on Service Connect as "web" so Prometheus can scrape
+# /metrics internally without going through the ALB.
 # =========================================================
 resource "aws_ecs_task_definition" "web" {
   family                   = "ay-l-final-project-web"
@@ -40,14 +52,15 @@ resource "aws_ecs_task_definition" "web" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.web_cpu
   memory                   = var.web_memory
-  execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn             = aws_iam_role.task.arn
+  execution_role_arn       = var.execution_role_arn
+  task_role_arn             = var.task_role_arn
 
   container_definitions = jsonencode([
     {
       name  = "web"
       image = "${var.ecr_repository_url}:${var.image_tag}"
       portMappings = [{
+        name          = "web"
         containerPort = var.container_port
         protocol      = "tcp"
       }]
@@ -72,7 +85,7 @@ resource "aws_ecs_task_definition" "web" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.web.name
-          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-region"        = data.aws_region.current.region
           "awslogs-stream-prefix" = "web"
         }
       }
@@ -101,6 +114,21 @@ resource "aws_ecs_service" "web" {
     container_port    = var.container_port
   }
 
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.internal.arn
+
+    service {
+      port_name      = "web"
+      discovery_name = "web"
+
+      client_alias {
+        port     = var.container_port
+        dns_name = "web"
+      }
+    }
+  }
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
@@ -113,6 +141,8 @@ resource "aws_ecs_service" "web" {
 
 # =========================================================
 # Worker — RQ background jobs, no ALB
+# rq-exporter sidecar exposes /metrics on rq_exporter_port,
+# registered on Service Connect as "worker" for Prometheus scraping.
 # =========================================================
 resource "aws_ecs_task_definition" "worker" {
   family                   = "ay-l-final-project-worker"
@@ -120,14 +150,14 @@ resource "aws_ecs_task_definition" "worker" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.worker_cpu
   memory                   = var.worker_memory
-  execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn             = aws_iam_role.task.arn
+  execution_role_arn       = var.execution_role_arn
+  task_role_arn             = var.task_role_arn
 
   container_definitions = jsonencode([
     {
       name    = "worker"
       image   = "${var.ecr_repository_url}:${var.image_tag}"
-      command = ["python", "manage.py", "rqworker", "default"] 
+      command = ["python", "manage.py", "rqworker", "default"]
       environment = [
         { name = "REDIS_URL", value = "redis://${var.redis_endpoint}:${var.redis_port}/0" }
       ]
@@ -142,8 +172,30 @@ resource "aws_ecs_task_definition" "worker" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.worker.name
-          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-region"        = data.aws_region.current.region
           "awslogs-stream-prefix" = "worker"
+        }
+      }
+    },
+    {
+      name      = "rq-exporter"
+      image     = "mdawar/rq-exporter:1.2.0"
+      essential = false
+      portMappings = [{
+        name          = "worker-metrics"
+        containerPort = var.rq_exporter_port
+        protocol      = "tcp"
+      }]
+      environment = [
+        { name = "RQ_REDIS_URL", value = "redis://${var.redis_endpoint}:${var.redis_port}/0" },
+        { name = "RQ_EXPORTER_PORT", value = tostring(var.rq_exporter_port) }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.worker.name
+          "awslogs-region"        = data.aws_region.current.region
+          "awslogs-stream-prefix" = "rq-exporter"
         }
       }
     }
@@ -165,6 +217,21 @@ resource "aws_ecs_service" "worker" {
     assign_public_ip = false
   }
 
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.internal.arn
+
+    service {
+      port_name      = "worker-metrics"
+      discovery_name = "worker"
+
+      client_alias {
+        port     = var.rq_exporter_port
+        dns_name = "worker"
+      }
+    }
+  }
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
@@ -175,6 +242,7 @@ resource "aws_ecs_service" "worker" {
 
 # =========================================================
 # Scheduler — cron-style tasks, no ALB, desired_count = 1
+# Same rq-exporter sidecar pattern as worker, registered as "scheduler".
 # =========================================================
 resource "aws_ecs_task_definition" "scheduler" {
   family                   = "ay-l-final-project-scheduler"
@@ -182,14 +250,14 @@ resource "aws_ecs_task_definition" "scheduler" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.scheduler_cpu
   memory                   = var.scheduler_memory
-  execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn             = aws_iam_role.task.arn
+  execution_role_arn       = var.execution_role_arn
+  task_role_arn             = var.task_role_arn
 
   container_definitions = jsonencode([
     {
       name    = "scheduler"
       image   = "${var.ecr_repository_url}:${var.image_tag}"
-      command = ["python", "manage.py", "rqscheduler"] 
+      command = ["python", "manage.py", "rqscheduler"]
       environment = [
         { name = "REDIS_URL", value = "redis://${var.redis_endpoint}:${var.redis_port}/0" }
       ]
@@ -204,8 +272,30 @@ resource "aws_ecs_task_definition" "scheduler" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.scheduler.name
-          "awslogs-region" = data.aws_region.current.region
+          "awslogs-region"        = data.aws_region.current.region
           "awslogs-stream-prefix" = "scheduler"
+        }
+      }
+    },
+    {
+      name      = "rq-exporter"
+      image     = "mdawar/rq-exporter:1.2.0"
+      essential = false
+      portMappings = [{
+        name          = "scheduler-metrics"
+        containerPort = var.rq_exporter_port
+        protocol      = "tcp"
+      }]
+      environment = [
+        { name = "RQ_REDIS_URL", value = "redis://${var.redis_endpoint}:${var.redis_port}/0" },
+        { name = "RQ_EXPORTER_PORT", value = tostring(var.rq_exporter_port) }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.scheduler.name
+          "awslogs-region"        = data.aws_region.current.region
+          "awslogs-stream-prefix" = "rq-exporter"
         }
       }
     }
@@ -222,9 +312,27 @@ resource "aws_ecs_service" "scheduler" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = var.private_subnet_ids
+    subnets = var.private_subnet_ids
+    # Intentionally shared with the worker service - scheduler and worker have
+    # identical network requirements (no public exposure, same rq-exporter
+    # port, same RDS/Redis access). Not a copy-paste bug.
     security_groups  = [var.ecs_worker_security_group_id]
     assign_public_ip = false
+  }
+
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.internal.arn
+
+    service {
+      port_name      = "scheduler-metrics"
+      discovery_name = "scheduler"
+
+      client_alias {
+        port     = var.rq_exporter_port
+        dns_name = "scheduler"
+      }
+    }
   }
 
   deployment_circuit_breaker {

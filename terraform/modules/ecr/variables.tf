@@ -1,7 +1,7 @@
-variable "repository_name" {
-  description = "Name of the ECR repository"
-  type        = string
-  default     = "ay-l-final-project-ecr"
+variable "repository_names" {
+  description = "Repo keys to create, prefixed automatically as ay-l-final-project-<key>"
+  type        = list(string)
+  default     = ["app", "prometheus", "grafana"]
 }
 
 variable "image_tag_mutability" {

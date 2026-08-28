@@ -42,20 +42,24 @@ output "redis_security_group_id" {
   value = module.vpc.redis_security_group_id
 }
 
-output "monitoring_security_group_id" {
-  value = module.vpc.monitoring_security_group_id
+output "grafana_alb_security_group_id" {
+  value = module.vpc.grafana_alb_security_group_id
 }
 
-output "ecr_repository_url" {
-  value = module.ecr.repository_url
+output "ecs_monitoring_security_group_id" {
+  value = module.vpc.ecs_monitoring_security_group_id
 }
 
-output "ecr_repository_arn" {
-  value = module.ecr.repository_arn
+output "ecr_repository_urls" {
+  value = module.ecr.repository_urls
 }
 
-output "ecr_repository_name" {
-  value = module.ecr.repository_name
+output "ecr_repository_arns" {
+  value = module.ecr.repository_arns
+}
+
+output "ecr_repository_names" {
+  value = module.ecr.repository_names
 }
 
 output "rds_db_endpoint" {
@@ -100,4 +104,33 @@ output "ecs_execution_role_arn" {
 
 output "ecs_task_role_arn" {
   value = module.ecs.task_role_arn
+}
+
+output "s3_bucket_id" {
+  value = module.s3.bucket_id
+}
+
+output "cloudfront_domain_name" {
+  value = module.s3.cloudfront_domain_name
+}
+
+output "github_actions_role_arn" {
+  description = "ARN GitHub Actions assumes via OIDC — used as AWS_ROLE_ARN secret in the workflow"
+  value       = "arn:aws:iam::992382545251:role/ay-l-final-project-github-actions-role-manual"
+}
+
+output "grafana_dns_name" {
+  value = module.alb_grafana.dns_name
+}
+
+output "prometheus_service_name" {
+  value = module.ecs.prometheus_service_name
+}
+
+output "grafana_service_name" {
+  value = module.ecs.grafana_service_name
+}
+
+output "grafana_admin_secret_arn" {
+  value = module.ecs.grafana_admin_secret_arn
 }

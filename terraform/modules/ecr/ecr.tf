@@ -1,5 +1,7 @@
-resource "aws_ecr_repository" "status_page" {
-  name                 = var.repository_name
+resource "aws_ecr_repository" "this" {
+  for_each = toset(var.repository_names)
+
+  name                 = "ay-l-final-project-${each.key}"
   image_tag_mutability = var.image_tag_mutability
 
   image_scanning_configuration {
@@ -13,8 +15,10 @@ resource "aws_ecr_repository" "status_page" {
   tags = var.tags
 }
 
-resource "aws_ecr_lifecycle_policy" "status_page" {
-  repository = aws_ecr_repository.status_page.name
+resource "aws_ecr_lifecycle_policy" "this" {
+  for_each = aws_ecr_repository.this
+
+  repository = each.value.name
 
   policy = jsonencode({
     rules = [
