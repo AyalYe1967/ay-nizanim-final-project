@@ -181,8 +181,6 @@ resource "aws_security_group" "ecs_monitoring" {
     security_groups = [aws_security_group.grafana_alb.id]
   }
 
-<<<<<<< Updated upstream
-=======
   ingress {
     description = "Prometheus query traffic from Grafana (self-referencing - both share this SG)"
     from_port   = 9090
@@ -191,7 +189,6 @@ resource "aws_security_group" "ecs_monitoring" {
     self        = true
   }
 
->>>>>>> Stashed changes
   egress {
     from_port   = 0
     to_port     = 0
@@ -202,8 +199,4 @@ resource "aws_security_group" "ecs_monitoring" {
   tags = merge(local.common_tags, {
     Name = "${var.project_name}-ecs-monitoring-sg"
   })
-<<<<<<< Updated upstream
 }
-=======
-}
->>>>>>> Stashed changes
