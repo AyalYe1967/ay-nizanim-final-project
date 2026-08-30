@@ -162,9 +162,12 @@ resource "aws_security_group" "grafana_alb" {
   })
 }
 
+<<<<<<< Updated upstream
 # ECS Monitoring SG: Prometheus + Grafana Fargate tasks
 # Grafana only reachable from its ALB. Prometheus has no public/ALB exposure -
 # it is reached internally via ECS Service Connect.
+=======
+>>>>>>> Stashed changes
 resource "aws_security_group" "ecs_monitoring" {
   name        = "${var.project_name}-ecs-monitoring-sg"
   description = "Prometheus and Grafana ECS tasks - Grafana ingress from its ALB only"
@@ -178,6 +181,17 @@ resource "aws_security_group" "ecs_monitoring" {
     security_groups = [aws_security_group.grafana_alb.id]
   }
 
+<<<<<<< Updated upstream
+=======
+  ingress {
+    description = "Prometheus query traffic from Grafana (self-referencing - both share this SG)"
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    self        = true
+  }
+
+>>>>>>> Stashed changes
   egress {
     from_port   = 0
     to_port     = 0
@@ -188,4 +202,8 @@ resource "aws_security_group" "ecs_monitoring" {
   tags = merge(local.common_tags, {
     Name = "${var.project_name}-ecs-monitoring-sg"
   })
+<<<<<<< Updated upstream
 }
+=======
+}
+>>>>>>> Stashed changes

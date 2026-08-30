@@ -134,3 +134,16 @@ output "grafana_service_name" {
 output "grafana_admin_secret_arn" {
   value = module.ecs.grafana_admin_secret_arn
 }
+
+output "amp_workspace_id" {
+  description = "AMP workspace ID - needed to replace TODO_AMP_WORKSPACE_ID in prometheus.yml / datasources.yml, and to scope the manual aps:RemoteWrite / aps:QueryMetrics IAM permissions"
+  value       = module.amp.workspace_id
+}
+
+output "amp_remote_write_url" {
+  value = module.amp.remote_write_url
+}
+
+output "amp_query_url" {
+  value = module.amp.query_url
+}

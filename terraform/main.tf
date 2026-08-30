@@ -74,3 +74,10 @@ module "alb_grafana" {
   public_subnet_ids             = module.vpc.public_subnet_ids
   grafana_alb_security_group_id = module.vpc.grafana_alb_security_group_id
 }
+<<<<<<< Updated upstream
+=======
+
+module "amp" {
+  source = "./modules/amp"
+}
+>>>>>>> Stashed changes
