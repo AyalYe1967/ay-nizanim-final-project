@@ -17,10 +17,7 @@ datasources:
     type: prometheus
     uid: amp
     access: proxy
-    # TODO: replace with the real query URL once modules/amp exists -
-    # output of aws_prometheus_workspace, format:
-    # https://aps-workspaces.<region>.amazonaws.com/workspaces/<workspace-id>
-    url: https://aps-workspaces.us-east-1.amazonaws.com/workspaces/TODO_AMP_WORKSPACE_ID
+    url: ${AMP_QUERY_URL}
     isDefault: false
     editable: false
     jsonData:

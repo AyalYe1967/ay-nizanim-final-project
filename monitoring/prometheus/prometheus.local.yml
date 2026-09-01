@@ -1,3 +1,9 @@
+# monitoring/prometheus/prometheus.local.yml
+# Local-only variant for docker-compose testing. No remote_write block —
+# there is no real AMP workspace locally, and attempting sigv4 auth against
+# a placeholder URL would just fail continuously and fill the logs.
+# The cloud version (prometheus.yml, baked into the image) is untouched.
+
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -5,7 +11,6 @@ global:
     project: ay-l-final-project
 
 scrape_configs:
-  # Prometheus scraping itself
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
@@ -15,21 +20,10 @@ scrape_configs:
     static_configs:
       - targets: ['web:8000']
 
-  # RQ worker - rq-exporter sidecar, already wired via Service Connect in ecs.tf
   - job_name: 'worker'
     static_configs:
       - targets: ['worker:8888']
 
-  # RQ scheduler - same rq-exporter sidecar pattern as worker
   - job_name: 'scheduler'
     static_configs:
       - targets: ['scheduler:8888']
-
-remote_write:
-  - url: "AMP_REMOTE_WRITE_URL_PLACEHOLDER"
-    sigv4:
-      region: us-east-1
-    queue_config:
-      max_samples_per_send: 1000
-      max_shards: 10
-      min_backoff: 30ms

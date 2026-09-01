@@ -33,6 +33,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: nizanim-status-page
+    networks:
+      default:
+        aliases:
+          - web
     env_file:
       - .env
     depends_on:
@@ -87,6 +91,66 @@ services:
       status-page:
         condition: service_healthy
     command: ["python", "manage.py", "rqscheduler"]
+    restart: unless-stopped
+
+  prometheus:
+    build:
+      context: ../monitoring/prometheus
+    container_name: nizanim-prometheus
+    volumes:
+      - ../monitoring/prometheus/prometheus.local.yml:/etc/prometheus/prometheus.local.yml:ro
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  grafana:
+    build:
+      context: ../monitoring/grafana
+    container_name: nizanim-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      PROMETHEUS_URL: http://prometheus:9090
+      AMP_QUERY_URL: http://localhost:9999
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  worker:
+    image: mdawar/rq-exporter:v3.1.0
+    container_name: nizanim-worker-exporter
+    environment:
+      RQ_REDIS_URL: redis://redis:6379/0
+      RQ_EXPORTER_PORT: "8888"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler:
+    image: mdawar/rq-exporter:v3.1.0
+    container_name: nizanim-scheduler-exporter
+    environment:
+      RQ_REDIS_URL: redis://redis:6379/0
+      RQ_EXPORTER_PORT: "8888"
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

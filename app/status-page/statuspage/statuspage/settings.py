@@ -182,6 +182,7 @@ INSTALLED_APPS = [
     'metrics',
     'subscribers',
     'django_rq',
+    'django_prometheus',
     'drf_yasg',
     'queuing',
     'django_otp',
@@ -191,6 +192,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -203,6 +205,7 @@ MIDDLEWARE = [
     'statuspage.middleware.APIVersionMiddleware',
     'statuspage.middleware.ObjectChangeMiddleware',
     'statuspage.middleware.DynamicConfigMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 ROOT_URLCONF = 'statuspage.urls'

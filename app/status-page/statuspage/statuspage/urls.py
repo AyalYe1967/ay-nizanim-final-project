@@ -63,6 +63,9 @@ _patterns = [
     re_path(r'^api/swagger(?P<format>.json|.yaml)$', schema_view.without_ui(cache_timeout=86400),
             name='schema_swagger'),
 
+    # Monitoring
+    path('', include('django_prometheus.urls')),
+    
     path('media/<path:path>', serve, {'document_root': settings.MEDIA_ROOT}),
 
     # Plugins

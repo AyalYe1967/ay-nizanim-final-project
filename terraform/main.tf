@@ -58,6 +58,8 @@ module "ecs" {
   grafana_ecr_repository_url        = module.ecr.repository_urls["grafana"]
   ecs_monitoring_security_group_id  = module.vpc.ecs_monitoring_security_group_id
   grafana_target_group_arn          = module.alb_grafana.grafana_target_group_arn
+  amp_remote_write_url = module.amp.remote_write_url
+  amp_query_url         = module.amp.query_url
 }
 
 module "s3" {
@@ -74,10 +76,7 @@ module "alb_grafana" {
   public_subnet_ids             = module.vpc.public_subnet_ids
   grafana_alb_security_group_id = module.vpc.grafana_alb_security_group_id
 }
-<<<<<<< Updated upstream
-=======
 
 module "amp" {
   source = "./modules/amp"
 }
->>>>>>> Stashed changes

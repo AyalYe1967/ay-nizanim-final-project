@@ -60,6 +60,9 @@ resource "aws_ecs_task_definition" "prometheus" {
         containerPort = var.prometheus_port
         protocol      = "tcp"
       }]
+      environment = [
+        { name = "AMP_REMOTE_WRITE_URL", value = var.amp_remote_write_url }
+      ]
       healthCheck = {
         command     = ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${var.prometheus_port}/-/healthy || exit 1"]
         interval    = 30
@@ -142,7 +145,8 @@ resource "aws_ecs_task_definition" "grafana" {
       }]
       environment = [
         { name = "GF_SERVER_HTTP_PORT", value = tostring(var.grafana_port) },
-        { name = "PROMETHEUS_URL", value = "http://prometheus:${var.prometheus_port}" }
+        { name = "PROMETHEUS_URL", value = "http://prometheus:${var.prometheus_port}" },
+        { name = "AMP_QUERY_URL", value = var.amp_query_url }
       ]
       secrets = [
         { name = "GF_SECURITY_ADMIN_USER", valueFrom = "${aws_secretsmanager_secret.grafana_admin.arn}:username::" },

@@ -205,6 +205,16 @@ variable "grafana_memory" {
   default = 512
 }
 
+variable "amp_remote_write_url" {
+  description = "AMP remote_write endpoint URL, from the amp module"
+  type        = string
+}
+
+variable "amp_query_url" {
+  description = "AMP query endpoint URL, from the amp module"
+  type        = string
+}
+
 variable "tags" {
   type = map(string)
   default = {

@@ -115,12 +115,12 @@
       {
         "name": "job", "type": "query", "label": "Job", "datasource": {"type": "prometheus", "uid": "prometheus"},
         "query": {"query": "label_values({__name__=~\"rq_.*\"}, job)", "refId": "job"},
-        "refresh": 2, "multi": false, "includeAll": false, "current": {}
+        "refresh": 2, "multi": true, "includeAll": true, "current": {"text": ["All"], "value": ["$__all"]}
       },
       {
         "name": "instance", "type": "query", "label": "Instance", "datasource": {"type": "prometheus", "uid": "prometheus"},
         "query": {"query": "label_values(rq_workers{job=~\"$job\"}, instance)", "refId": "instance"},
-        "refresh": 2, "multi": false, "includeAll": false, "current": {}
+        "refresh": 2, "multi": true, "includeAll": true, "current": {"text": ["All"], "value": ["$__all"]}
       },
       {
         "name": "queue", "type": "query", "label": "Queue", "datasource": {"type": "prometheus", "uid": "prometheus"},

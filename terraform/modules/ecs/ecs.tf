@@ -65,14 +65,21 @@ resource "aws_ecs_task_definition" "web" {
         protocol      = "tcp"
       }]
       environment = [
-        { name = "REDIS_URL", value = "redis://${var.redis_endpoint}:${var.redis_port}/0" }
+        { name = "REDIS_HOST", value = var.redis_endpoint },
+        { name = "REDIS_PORT", value = tostring(var.redis_port) },
+        # ALB health checks send the target's private IP as the Host header,
+        # which changes on every task restart - can't be allowlisted by value.
+        # "*" relies on security groups (ALB SG -> web SG only) as the real
+        # access boundary. Documented tradeoff, not a production pattern.
+        { name = "ALLOWED_HOSTS", value = "*" }
       ]
       secrets = [
-        { name = "DB_HOST", valueFrom = "${var.db_secret_arn}:host::" },
-        { name = "DB_PORT", valueFrom = "${var.db_secret_arn}:port::" },
-        { name = "DB_NAME", valueFrom = "${var.db_secret_arn}:dbname::" },
-        { name = "DB_USER", valueFrom = "${var.db_secret_arn}:username::" },
-        { name = "DB_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
+        { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
+        { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
+        { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
+        { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
+        { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
+        { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
       ]
       healthCheck = {
         command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/ping/ || exit 1"]
@@ -159,14 +166,16 @@ resource "aws_ecs_task_definition" "worker" {
       image   = "${var.ecr_repository_url}:${var.image_tag}"
       command = ["python", "manage.py", "rqworker", "default"]
       environment = [
-        { name = "REDIS_URL", value = "redis://${var.redis_endpoint}:${var.redis_port}/0" }
+        { name = "REDIS_HOST", value = var.redis_endpoint },
+        { name = "REDIS_PORT", value = tostring(var.redis_port) }
       ]
       secrets = [
-        { name = "DB_HOST", valueFrom = "${var.db_secret_arn}:host::" },
-        { name = "DB_PORT", valueFrom = "${var.db_secret_arn}:port::" },
-        { name = "DB_NAME", valueFrom = "${var.db_secret_arn}:dbname::" },
-        { name = "DB_USER", valueFrom = "${var.db_secret_arn}:username::" },
-        { name = "DB_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
+        { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
+        { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
+        { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
+        { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
+        { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
+        { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -179,7 +188,7 @@ resource "aws_ecs_task_definition" "worker" {
     },
     {
       name      = "rq-exporter"
-      image     = "mdawar/rq-exporter:1.2.0"
+      image     = "mdawar/rq-exporter:v3.1.0"
       essential = false
       portMappings = [{
         name          = "worker-metrics"
@@ -259,14 +268,16 @@ resource "aws_ecs_task_definition" "scheduler" {
       image   = "${var.ecr_repository_url}:${var.image_tag}"
       command = ["python", "manage.py", "rqscheduler"]
       environment = [
-        { name = "REDIS_URL", value = "redis://${var.redis_endpoint}:${var.redis_port}/0" }
+        { name = "REDIS_HOST", value = var.redis_endpoint },
+        { name = "REDIS_PORT", value = tostring(var.redis_port) }
       ]
       secrets = [
-        { name = "DB_HOST", valueFrom = "${var.db_secret_arn}:host::" },
-        { name = "DB_PORT", valueFrom = "${var.db_secret_arn}:port::" },
-        { name = "DB_NAME", valueFrom = "${var.db_secret_arn}:dbname::" },
-        { name = "DB_USER", valueFrom = "${var.db_secret_arn}:username::" },
-        { name = "DB_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
+        { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
+        { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
+        { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
+        { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
+        { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
+        { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -279,7 +290,7 @@ resource "aws_ecs_task_definition" "scheduler" {
     },
     {
       name      = "rq-exporter"
-      image     = "mdawar/rq-exporter:1.2.0"
+      image     = "mdawar/rq-exporter:v3.1.0"
       essential = false
       portMappings = [{
         name          = "scheduler-metrics"
