@@ -85,7 +85,7 @@ resource "aws_ecs_task_definition" "web" {
         { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
       ]
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/ping/ || exit 1"]
+        command     = ["CMD-SHELL", "python -c \"import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:${var.container_port}/ping/').status == 200 else 1)\""]
         interval    = 30
         timeout     = 5
         retries     = 3
@@ -167,7 +167,7 @@ resource "aws_ecs_task_definition" "worker" {
     {
       name    = "worker"
       image   = "${var.ecr_repository_url}:${var.image_tag}"
-      command = ["python", "manage.py", "rqworker", "default"]
+      command = ["python", "manage.py", "rqworker", "high", "default", "low"]
       environment = [
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = tostring(var.redis_port) },
@@ -266,7 +266,7 @@ resource "aws_ecs_task_definition" "scheduler" {
   cpu                      = var.scheduler_cpu
   memory                   = var.scheduler_memory
   execution_role_arn       = var.execution_role_arn
-  task_role_arn             = var.task_role_arn
+  task_role_arn            = var.task_role_arn
 
   container_definitions = jsonencode([
     {
