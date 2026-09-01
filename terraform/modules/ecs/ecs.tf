@@ -73,7 +73,8 @@ resource "aws_ecs_task_definition" "web" {
         # access boundary. Documented tradeoff, not a production pattern.
         { name = "ALLOWED_HOSTS", value = "*" },
         { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
-        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region }
+        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region },
+        { name = "AWS_CLOUDFRONT_DOMAIN", value = var.static_files_cloudfront_domain }
       ]
       secrets = [
         { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
@@ -171,7 +172,8 @@ resource "aws_ecs_task_definition" "worker" {
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = tostring(var.redis_port) },
         { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
-        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region }
+        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region },
+        { name = "AWS_CLOUDFRONT_DOMAIN", value = var.static_files_cloudfront_domain }
       ]
       secrets = [
         { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
@@ -275,7 +277,8 @@ resource "aws_ecs_task_definition" "scheduler" {
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = tostring(var.redis_port) },
         { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
-        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region }
+        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region },
+        { name = "AWS_CLOUDFRONT_DOMAIN", value = var.static_files_cloudfront_domain }
       ]
       secrets = [
         { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },

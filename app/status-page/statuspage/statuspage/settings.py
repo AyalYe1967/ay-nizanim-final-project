@@ -273,26 +273,40 @@ STATICFILES_DIRS = (
 AWS_STORAGE_BUCKET_NAME = getattr(configuration, 'AWS_STORAGE_BUCKET_NAME', '')
 AWS_S3_REGION_NAME = getattr(configuration, 'AWS_S3_REGION_NAME', 'us-east-1')
 
+AWS_STORAGE_BUCKET_NAME = getattr(configuration, 'AWS_STORAGE_BUCKET_NAME', '')
+AWS_S3_REGION_NAME = getattr(configuration, 'AWS_S3_REGION_NAME', 'us-east-1')
+AWS_CLOUDFRONT_DOMAIN = getattr(configuration, 'AWS_CLOUDFRONT_DOMAIN', '')
+
 if AWS_STORAGE_BUCKET_NAME:
     AWS_DEFAULT_ACL = None
     AWS_S3_FILE_OVERWRITE = False
     AWS_QUERYSTRING_AUTH = False
 
-    STATIC_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/static/'
-    MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/media/'
+    # The S3 bucket policy only allows the CloudFront distribution (OAC) to
+    # read objects - a direct https://<bucket>.s3.<region>.amazonaws.com/...
+    # URL gets 403'd by S3 itself. custom_domain routes every generated URL
+    # (including the ones baked into the ManifestStaticFilesStorage manifest
+    # at collectstatic time) through CloudFront instead.
+    if AWS_CLOUDFRONT_DOMAIN:
+        AWS_S3_CUSTOM_DOMAIN = AWS_CLOUDFRONT_DOMAIN
+        STATIC_URL = f'https://{AWS_CLOUDFRONT_DOMAIN}/static/'
+        MEDIA_URL = f'https://{AWS_CLOUDFRONT_DOMAIN}/media/'
+    else:
+        # Fallback only - will 403 in the browser since the bucket policy
+        # doesn't allow direct S3 reads. Set AWS_CLOUDFRONT_DOMAIN.
+        STATIC_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/static/'
+        MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/media/'
 
     STORAGES = {
         'default': {
             'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
-            'OPTIONS': {'location': 'media'},
+            'OPTIONS': {'location': 'media', 'custom_domain': AWS_CLOUDFRONT_DOMAIN or None},
         },
         'staticfiles': {
             'BACKEND': 'storages.backends.s3boto3.S3ManifestStaticStorage',
-            'OPTIONS': {'location': 'static'},
+            'OPTIONS': {'location': 'static', 'custom_domain': AWS_CLOUDFRONT_DOMAIN or None},
         },
     }
-    # Django 4.1 predates the STORAGES setting (added in 4.2) - django-storages
-    # also honors these legacy names, which is what actually takes effect here.
     DEFAULT_FILE_STORAGE = STORAGES['default']['BACKEND']
     STATICFILES_STORAGE = STORAGES['staticfiles']['BACKEND']
 else:

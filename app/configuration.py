@@ -46,6 +46,7 @@ REDIS = {
 # collectstatic RunTask (Master Plan 4.6) set this env var.
 AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
 AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
+AWS_CLOUDFRONT_DOMAIN = os.getenv("AWS_CLOUDFRONT_DOMAIN", "")
 
 SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
 

@@ -117,6 +117,12 @@ variable "static_files_bucket_name" {
   default     = ""
 }
 
+variable "static_files_cloudfront_domain" {
+  description = "CloudFront domain (*.cloudfront.net) in front of the static/media bucket - passed as AWS_CLOUDFRONT_DOMAIN. Required because the S3 bucket policy (OAC) only allows the CloudFront distribution to read objects; without this, generated URLs point straight at S3 and get 403'd by the browser"
+  type        = string
+  default     = ""
+}
+
 variable "redis_port" {
   type    = number
   default = 6379
