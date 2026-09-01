@@ -81,7 +81,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -146,7 +146,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -211,7 +211,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -276,7 +276,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -354,7 +354,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -376,7 +376,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -441,7 +441,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -518,7 +518,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -540,7 +540,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -605,7 +605,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -682,7 +682,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -704,7 +704,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -769,7 +769,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -791,7 +791,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -869,7 +869,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -933,7 +933,7 @@
             "uid": "cloudwatch"
           },
           "dimensions": {
-            "ReplicationGroupId": "$replicationgroup"
+            "CacheClusterId": "$replicationgroup"
           },
           "expression": "",
           "id": "",
@@ -975,15 +975,15 @@
         "name": "replicationgroup",
         "type": "custom",
         "label": "Replication Group",
-        "query": "ay-l-final-project-redis",
+        "query": "ay-l-final-project-redis-001",
         "current": {
-          "text": "ay-l-final-project-redis",
-          "value": "ay-l-final-project-redis"
+          "text": "ay-l-final-project-redis-001",
+          "value": "ay-l-final-project-redis-001"
         },
         "options": [
           {
-            "text": "ay-l-final-project-redis",
-            "value": "ay-l-final-project-redis",
+            "text": "ay-l-final-project-redis-001",
+            "value": "ay-l-final-project-redis-001",
             "selected": true
           }
         ],
