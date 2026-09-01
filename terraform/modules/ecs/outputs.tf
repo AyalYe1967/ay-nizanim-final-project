@@ -50,3 +50,22 @@ output "grafana_admin_secret_arn" {
   description = "Secrets Manager ARN holding the Grafana admin username/password"
   value       = aws_secretsmanager_secret.grafana_admin.arn
 }
+
+
+output "migrate_task_definition_arn" {
+  description = "Used by the CI/CD pipeline: aws ecs run-task --task-definition <this>"
+  value       = aws_ecs_task_definition.migrate.arn
+}
+
+output "migrate_task_definition_family" {
+  value = aws_ecs_task_definition.migrate.family
+}
+
+output "collectstatic_task_definition_arn" {
+  description = "Used by the CI/CD pipeline: aws ecs run-task --task-definition <this>"
+  value       = aws_ecs_task_definition.collectstatic.arn
+}
+
+output "collectstatic_task_definition_family" {
+  value = aws_ecs_task_definition.collectstatic.family
+}

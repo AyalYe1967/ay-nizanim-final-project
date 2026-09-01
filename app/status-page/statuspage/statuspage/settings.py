@@ -183,6 +183,7 @@ INSTALLED_APPS = [
     'subscribers',
     'django_rq',
     'django_prometheus',
+    'storages',
     'drf_yasg',
     'queuing',
     'django_otp',
@@ -256,15 +257,47 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_ROOT = BASE_DIR + '/static'
-STATIC_URL = f'/{BASE_PATH}static/'
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'project-static', 'dist'),
     os.path.join(BASE_DIR, 'project-static', 'img'),
     ('docs', os.path.join(BASE_DIR, 'project-static', 'docs')),  # Prefix with /docs
 )
 
-# Media
-MEDIA_URL = '/{}media/'.format(BASE_PATH)
+# S3 static/media storage (django-storages). AWS_STORAGE_BUCKET_NAME comes
+# from configuration.py, which in turn is empty unless the env var is set.
+# - Local dev and `docker build`'s collectstatic step (Master Plan 1.1): empty
+#   -> falls back to local filesystem storage, no AWS credentials needed.
+# - ECS runtime containers + the dedicated collectstatic RunTask (Master Plan
+#   4.6): set -> S3, with ManifestStaticFilesStorage-equivalent hashed
+#   filenames so CloudFront never needs active cache invalidation (1.2, 2.3).
+AWS_STORAGE_BUCKET_NAME = getattr(configuration, 'AWS_STORAGE_BUCKET_NAME', '')
+AWS_S3_REGION_NAME = getattr(configuration, 'AWS_S3_REGION_NAME', 'us-east-1')
+
+if AWS_STORAGE_BUCKET_NAME:
+    AWS_DEFAULT_ACL = None
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+
+    STATIC_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/static/'
+    MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/media/'
+
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'OPTIONS': {'location': 'media'},
+        },
+        'staticfiles': {
+            'BACKEND': 'storages.backends.s3boto3.S3ManifestStaticStorage',
+            'OPTIONS': {'location': 'static'},
+        },
+    }
+    # Django 4.1 predates the STORAGES setting (added in 4.2) - django-storages
+    # also honors these legacy names, which is what actually takes effect here.
+    DEFAULT_FILE_STORAGE = STORAGES['default']['BACKEND']
+    STATICFILES_STORAGE = STORAGES['staticfiles']['BACKEND']
+else:
+    STATIC_URL = f'/{BASE_PATH}static/'
+    MEDIA_URL = '/{}media/'.format(BASE_PATH)
 
 # Disable default limit of 1000 fields per request. Needed for bulk deletion of objects. (Added in Django 1.10.)
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None

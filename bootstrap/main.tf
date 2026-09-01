@@ -56,23 +56,3 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
-
-
-# DynamoDB Table - Terraform State Locking
-
-resource "aws_dynamodb_table" "tf_locks" {
-  name         = "ay-l-final-project-tf-locks"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-
-  tags = {
-    Name    = "AY-L-FINAL-PROJECT-tf-locks"
-    Owner   = "ayal"
-    Purpose = "terraform-state-locking"
-  }
-}

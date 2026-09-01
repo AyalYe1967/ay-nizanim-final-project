@@ -60,6 +60,11 @@ module "ecs" {
   grafana_target_group_arn          = module.alb_grafana.grafana_target_group_arn
   amp_remote_write_url = module.amp.remote_write_url
   amp_query_url         = module.amp.query_url
+    static_files_bucket_arn  = module.s3.bucket_arn
+  static_files_bucket_name = module.s3.bucket_id
+  image_tag             = var.image_tag
+  prometheus_image_tag   = var.prometheus_image_tag
+  grafana_image_tag      = var.grafana_image_tag
 }
 
 module "s3" {

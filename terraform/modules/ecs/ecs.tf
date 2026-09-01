@@ -71,7 +71,9 @@ resource "aws_ecs_task_definition" "web" {
         # which changes on every task restart - can't be allowlisted by value.
         # "*" relies on security groups (ALB SG -> web SG only) as the real
         # access boundary. Documented tradeoff, not a production pattern.
-        { name = "ALLOWED_HOSTS", value = "*" }
+        { name = "ALLOWED_HOSTS", value = "*" },
+        { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
+        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region }
       ]
       secrets = [
         { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
@@ -167,7 +169,9 @@ resource "aws_ecs_task_definition" "worker" {
       command = ["python", "manage.py", "rqworker", "default"]
       environment = [
         { name = "REDIS_HOST", value = var.redis_endpoint },
-        { name = "REDIS_PORT", value = tostring(var.redis_port) }
+        { name = "REDIS_PORT", value = tostring(var.redis_port) },
+        { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
+        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region }
       ]
       secrets = [
         { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
@@ -269,7 +273,9 @@ resource "aws_ecs_task_definition" "scheduler" {
       command = ["python", "manage.py", "rqscheduler"]
       environment = [
         { name = "REDIS_HOST", value = var.redis_endpoint },
-        { name = "REDIS_PORT", value = tostring(var.redis_port) }
+        { name = "REDIS_PORT", value = tostring(var.redis_port) },
+        { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
+        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region }
       ]
       secrets = [
         { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },

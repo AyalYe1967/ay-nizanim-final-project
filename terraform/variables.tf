@@ -1,7 +1,7 @@
 variable "project_name" {
-  description = "Prefix used for naming and tagging all resources (naming convention: AY-L-FINAL-PROJECT-<service>)"
+  description = "Prefix used for naming and tagging all resources (naming convention: ay-l-final-project-<service>)"
   type        = string
-  default     = "AY-L-FINAL-PROJECT"
+  default     = "ay-l-final-project"
 }
 
 variable "environment" {
@@ -70,4 +70,22 @@ variable "tags" {
   default = {
     "Owner" = "ayal"
   }
+}
+
+variable "image_tag" {
+  description = "Git short SHA - tag for the app image in ECR"
+  type        = string
+  default     = "latest"
+}
+
+variable "prometheus_image_tag" {
+  description = "Git short SHA - tag for the prometheus image in ECR"
+  type        = string
+  default     = "latest"
+}
+
+variable "grafana_image_tag" {
+  description = "Git short SHA - tag for the grafana image in ECR"
+  type        = string
+  default     = "latest"
 }

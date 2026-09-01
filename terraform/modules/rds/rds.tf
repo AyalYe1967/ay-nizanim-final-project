@@ -33,6 +33,7 @@ resource "aws_db_instance" "status_page" {
 
 resource "aws_secretsmanager_secret" "db_credentials" {
   name = "ay-l-final-project-rds-credentials"
+  recovery_window_in_days = 0 # lab/rebuild environment - not production
   tags = var.tags
 }
 

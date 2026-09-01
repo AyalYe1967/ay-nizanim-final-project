@@ -38,6 +38,15 @@ REDIS = {
     },
 }
 
+# S3 static/media storage (django-storages).
+# Left unset (None) during local dev and during `docker build`'s collectstatic
+# step (Master Plan 1.1) - settings.py falls back to local filesystem storage
+# whenever AWS_STORAGE_BUCKET_NAME is empty, so no AWS credentials are needed
+# at build time. Only the ECS runtime containers and the dedicated
+# collectstatic RunTask (Master Plan 4.6) set this env var.
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", "")
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
+
 SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
 
 SECRET_KEY = os.environ["SECRET_KEY"]

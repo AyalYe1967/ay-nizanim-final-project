@@ -5,7 +5,8 @@ from extras.plugins.urls import plugin_patterns, plugin_api_patterns, plugin_adm
 from .admin import admin_site
 from django.urls import path, include, re_path
 from statuspage.views import HomeView, DashboardHomeView, SubscriberVerifyView, SubscriberManageView, \
-    SubscriberUnsubscribeView, SubscriberSubscribeView, SubscriberRequestManagementKeyView
+    SubscriberUnsubscribeView, SubscriberSubscribeView, SubscriberRequestManagementKeyView, \
+    PingView, HealthView
 from users.views import LoginView, LogoutView
 from statuspage.api.views import APIRootView
 from drf_yasg import openapi
@@ -29,6 +30,8 @@ schema_view = get_schema_view(
 _patterns = [
     # Base Views
     path('', HomeView.as_view(), name='home'),
+    path('ping/', PingView.as_view(), name='ping'),
+    path('health/', HealthView.as_view(), name='health'),
 
     path('subscribers/subscribe', SubscriberSubscribeView.as_view(), name='subscriber_subscribe'),
     path('subscribers/reqeust-management-key', SubscriberRequestManagementKeyView.as_view(), name='subscriber_management_key'),

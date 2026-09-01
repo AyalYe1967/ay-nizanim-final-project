@@ -13,7 +13,9 @@ from django.views.decorators.csrf import requires_csrf_token
 from django.views.defaults import ERROR_500_TEMPLATE_NAME
 from django.template import loader
 from django.template.exceptions import TemplateDoesNotExist
-from django.http import HttpResponseServerError
+from django.http import HttpResponse, HttpResponseServerError, JsonResponse
+from django.views import View
+import django_rq
 
 from components.choices import ComponentStatusChoices
 from components.models import ComponentGroup, Component
@@ -312,3 +314,44 @@ def server_error(request, template_name=ERROR_500_TEMPLATE_NAME):
         'statuspage_version': settings.VERSION,
         'python_version': platform.python_version(),
     }))
+
+class PingView(View):
+    """
+    Liveness probe (Master Plan 1.3). Trivial - always 200 as long as the
+    Django process is alive. This is what the ALB target group and the
+    ECS container-level HEALTHCHECK poll - it deliberately never touches
+    DB/Redis, so a transient DB blip never causes the ALB to kill an
+    otherwise-healthy container.
+    """
+    def get(self, request):
+        return HttpResponse('OK')
+
+
+class HealthView(View):
+    """
+    Readiness / deep health check (Master Plan 1.3). Verifies DB and Redis
+    connectivity. Used only by Grafana/Prometheus for monitoring and
+    alerting - never by the ALB.
+    """
+    def get(self, request):
+        status = {}
+        healthy = True
+
+        try:
+            from django.db import connection as db_connection
+            with db_connection.cursor() as cursor:
+                cursor.execute('SELECT 1')
+            status['database'] = 'ok'
+        except Exception as exc:
+            status['database'] = f'error: {exc}'
+            healthy = False
+
+        try:
+            django_rq.get_connection('default').ping()
+            status['redis'] = 'ok'
+        except Exception as exc:
+            status['redis'] = f'error: {exc}'
+            healthy = False
+
+        return JsonResponse(status, status=200 if healthy else 503)
+    

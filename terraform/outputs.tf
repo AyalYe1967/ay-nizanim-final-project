@@ -147,3 +147,12 @@ output "amp_remote_write_url" {
 output "amp_query_url" {
   value = module.amp.query_url
 }
+
+
+output "migrate_task_definition_arn" {
+  value = module.ecs.migrate_task_definition_arn
+}
+
+output "collectstatic_task_definition_arn" {
+  value = module.ecs.collectstatic_task_definition_arn
+}

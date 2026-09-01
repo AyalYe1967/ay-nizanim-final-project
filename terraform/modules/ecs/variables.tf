@@ -111,6 +111,12 @@ variable "static_files_bucket_arn" {
   default     = null
 }
 
+variable "static_files_bucket_name" {
+  description = "S3 bucket name (not ARN) for static/media files - passed to web/worker/scheduler as AWS_STORAGE_BUCKET_NAME so django-storages picks up the S3 backend (settings.py falls back to local storage when empty)"
+  type        = string
+  default     = ""
+}
+
 variable "redis_port" {
   type    = number
   default = 6379
@@ -222,4 +228,28 @@ variable "tags" {
     Project   = "final_project"
     ManagedBy = "terraform"
   }
+}
+
+
+# =========================================================
+# RunTask definitions (migrate, collectstatic - Master Plan 4.6/4.7)
+# =========================================================
+variable "migrate_cpu" {
+  type    = number
+  default = 256
+}
+
+variable "migrate_memory" {
+  type    = number
+  default = 512
+}
+
+variable "collectstatic_cpu" {
+  type    = number
+  default = 256
+}
+
+variable "collectstatic_memory" {
+  type    = number
+  default = 512
 }
