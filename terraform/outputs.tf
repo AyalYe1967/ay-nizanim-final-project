@@ -114,11 +114,6 @@ output "cloudfront_domain_name" {
   value = module.s3.cloudfront_domain_name
 }
 
-output "github_actions_role_arn" {
-  description = "ARN GitHub Actions assumes via OIDC — used as AWS_ROLE_ARN secret in the workflow"
-  value       = "arn:aws:iam::992382545251:role/ay-l-final-project-github-actions-role-manual"
-}
-
 output "grafana_dns_name" {
   value = module.alb_grafana.dns_name
 }

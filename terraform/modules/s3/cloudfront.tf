@@ -26,7 +26,7 @@ resource "aws_cloudfront_distribution" "static" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-${aws_s3_bucket.static.id}"
     viewer_protocol_policy = "redirect-to-https"
-    compress                = true
+    compress               = true
 
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # AWS Managed-CachingOptimized
   }

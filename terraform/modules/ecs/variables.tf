@@ -1,3 +1,13 @@
+variable "project_name" {
+  description = "Project name used for portable IAM resource names"
+  type        = string
+}
+
+variable "environment" {
+  description = "Deployment environment name"
+  type        = string
+}
+
 variable "vpc_id" {
   type = string
 }
@@ -30,7 +40,11 @@ variable "ecr_repository_url" {
 variable "image_tag" {
   description = "Docker image tag to deploy (git SHA / build number from the CI/CD pipeline)"
   type        = string
-  default     = "latest"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.image_tag))
+    error_message = "image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "container_port" {
@@ -128,14 +142,56 @@ variable "redis_port" {
   default = 6379
 }
 
-variable "execution_role_arn" {
-  description = "ARN of the pre-existing ECS Task Execution Role (managed manually, not by Terraform)"
+variable "create_iam_roles" {
+  description = "Whether this module creates the ECS execution and task roles"
+  type        = bool
+  default     = true
+}
+
+variable "external_execution_role_arn" {
+  description = "Pre-created ECS execution role ARN used when create_iam_roles is false"
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.create_iam_roles || (
+      var.external_execution_role_arn != null &&
+      can(regex("^arn:[^:]+:iam::[0-9]{12}:role/.+$", var.external_execution_role_arn))
+    )
+    error_message = "external_execution_role_arn is required when create_iam_roles is false."
+  }
+}
+
+variable "external_task_role_arn" {
+  description = "Pre-created ECS application task role ARN used when create_iam_roles is false"
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.create_iam_roles || (
+      var.external_task_role_arn != null &&
+      can(regex("^arn:[^:]+:iam::[0-9]{12}:role/.+$", var.external_task_role_arn))
+    )
+    error_message = "external_task_role_arn is required when create_iam_roles is false."
+  }
+}
+
+variable "allowed_hosts" {
+  description = "Comma-separated Django ALLOWED_HOSTS value"
   type        = string
 }
 
-variable "task_role_arn" {
-  description = "ARN of the pre-existing ECS Task Role (managed manually, not by Terraform)"
+variable "site_url" {
+  description = "Public URL for Status-Page"
   type        = string
+}
+
+variable "debug" {
+  description = "Django DEBUG setting"
+  type        = bool
+  default     = false
 }
 
 # =========================================================
@@ -152,13 +208,21 @@ variable "grafana_ecr_repository_url" {
 }
 
 variable "prometheus_image_tag" {
-  type    = string
-  default = "latest"
+  type = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.prometheus_image_tag))
+    error_message = "prometheus_image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "grafana_image_tag" {
-  type    = string
-  default = "latest"
+  type = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.grafana_image_tag))
+    error_message = "grafana_image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "ecs_monitoring_security_group_id" {
@@ -224,6 +288,11 @@ variable "amp_remote_write_url" {
 
 variable "amp_query_url" {
   description = "AMP query endpoint URL, from the amp module"
+  type        = string
+}
+
+variable "amp_workspace_arn" {
+  description = "AMP workspace ARN used to scope Prometheus and Grafana permissions"
   type        = string
 }
 

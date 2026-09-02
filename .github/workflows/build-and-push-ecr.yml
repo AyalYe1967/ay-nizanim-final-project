@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "app/**"
+      - ".github/workflows/build-and-push-ecr.yml"
 
 permissions:
   contents: read
@@ -35,8 +38,8 @@ jobs:
         run: |
           docker build \
             -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
-            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
-            .
+            -f app/Dockerfile \
+            app
 
       - name: Push Status-Page image
         env:
@@ -45,4 +48,3 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"

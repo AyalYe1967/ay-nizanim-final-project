@@ -1,5 +1,27 @@
 data "aws_region" "current" {}
 
+locals {
+  status_page_environment = [
+    { name = "REDIS_HOST", value = var.redis_endpoint },
+    { name = "REDIS_PORT", value = tostring(var.redis_port) },
+    { name = "ALLOWED_HOSTS", value = var.allowed_hosts },
+    { name = "SITE_URL", value = var.site_url },
+    { name = "DEBUG", value = tostring(var.debug) },
+    { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
+    { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region },
+    { name = "AWS_CLOUDFRONT_DOMAIN", value = var.static_files_cloudfront_domain },
+  ]
+
+  status_page_secrets = [
+    { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
+    { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
+    { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
+    { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
+    { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
+    { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
+  ]
+}
+
 # --- Cluster ---
 resource "aws_ecs_cluster" "main" {
   name = var.cluster_name
@@ -52,8 +74,8 @@ resource "aws_ecs_task_definition" "web" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.web_cpu
   memory                   = var.web_memory
-  execution_role_arn       = var.execution_role_arn
-  task_role_arn             = var.task_role_arn
+  execution_role_arn       = local.execution_role_arn
+  task_role_arn            = local.task_role_arn
 
   container_definitions = jsonencode([
     {
@@ -64,26 +86,8 @@ resource "aws_ecs_task_definition" "web" {
         containerPort = var.container_port
         protocol      = "tcp"
       }]
-      environment = [
-        { name = "REDIS_HOST", value = var.redis_endpoint },
-        { name = "REDIS_PORT", value = tostring(var.redis_port) },
-        # ALB health checks send the target's private IP as the Host header,
-        # which changes on every task restart - can't be allowlisted by value.
-        # "*" relies on security groups (ALB SG -> web SG only) as the real
-        # access boundary. Documented tradeoff, not a production pattern.
-        { name = "ALLOWED_HOSTS", value = "*" },
-        { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
-        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region },
-        { name = "AWS_CLOUDFRONT_DOMAIN", value = var.static_files_cloudfront_domain }
-      ]
-      secrets = [
-        { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
-        { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
-        { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
-        { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
-        { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
-        { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
-      ]
+      environment = local.status_page_environment
+      secrets     = local.status_page_secrets
       healthCheck = {
         command     = ["CMD-SHELL", "python -c \"import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:${var.container_port}/ping/').status == 200 else 1)\""]
         interval    = 30
@@ -120,8 +124,8 @@ resource "aws_ecs_service" "web" {
 
   load_balancer {
     target_group_arn = var.web_target_group_arn
-    container_name    = "web"
-    container_port    = var.container_port
+    container_name   = "web"
+    container_port   = var.container_port
   }
 
   service_connect_configuration {
@@ -160,29 +164,16 @@ resource "aws_ecs_task_definition" "worker" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.worker_cpu
   memory                   = var.worker_memory
-  execution_role_arn       = var.execution_role_arn
-  task_role_arn             = var.task_role_arn
+  execution_role_arn       = local.execution_role_arn
+  task_role_arn            = local.task_role_arn
 
   container_definitions = jsonencode([
     {
-      name    = "worker"
-      image   = "${var.ecr_repository_url}:${var.image_tag}"
-      command = ["python", "manage.py", "rqworker", "high", "default", "low"]
-      environment = [
-        { name = "REDIS_HOST", value = var.redis_endpoint },
-        { name = "REDIS_PORT", value = tostring(var.redis_port) },
-        { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
-        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region },
-        { name = "AWS_CLOUDFRONT_DOMAIN", value = var.static_files_cloudfront_domain }
-      ]
-      secrets = [
-        { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
-        { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
-        { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
-        { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
-        { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
-        { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
-      ]
+      name        = "worker"
+      image       = "${var.ecr_repository_url}:${var.image_tag}"
+      command     = ["python", "manage.py", "rqworker", "high", "default", "low"]
+      environment = local.status_page_environment
+      secrets     = local.status_page_secrets
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -265,29 +256,16 @@ resource "aws_ecs_task_definition" "scheduler" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.scheduler_cpu
   memory                   = var.scheduler_memory
-  execution_role_arn       = var.execution_role_arn
-  task_role_arn            = var.task_role_arn
+  execution_role_arn       = local.execution_role_arn
+  task_role_arn            = local.task_role_arn
 
   container_definitions = jsonencode([
     {
-      name    = "scheduler"
-      image   = "${var.ecr_repository_url}:${var.image_tag}"
-      command = ["python", "manage.py", "rqscheduler"]
-      environment = [
-        { name = "REDIS_HOST", value = var.redis_endpoint },
-        { name = "REDIS_PORT", value = tostring(var.redis_port) },
-        { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
-        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region },
-        { name = "AWS_CLOUDFRONT_DOMAIN", value = var.static_files_cloudfront_domain }
-      ]
-      secrets = [
-        { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
-        { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
-        { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
-        { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
-        { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
-        { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
-      ]
+      name        = "scheduler"
+      image       = "${var.ecr_repository_url}:${var.image_tag}"
+      command     = ["python", "manage.py", "rqscheduler"]
+      environment = local.status_page_environment
+      secrets     = local.status_page_secrets
       logConfiguration = {
         logDriver = "awslogs"
         options = {

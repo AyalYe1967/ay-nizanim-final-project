@@ -417,6 +417,10 @@ else:
         'PASSWORD': TASKS_REDIS_PASSWORD,
         'SSL': TASKS_REDIS_SSL,
         'SSL_CERT_REQS': None if TASKS_REDIS_SKIP_TLS_VERIFY else 'required',
+        'REDIS_CLIENT_KWARGS': {
+            'socket_timeout': None,
+            'socket_connect_timeout': 5,
+        },
         'DEFAULT_TIMEOUT': RQ_DEFAULT_TIMEOUT,
     }
 

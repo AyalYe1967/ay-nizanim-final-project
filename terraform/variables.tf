@@ -73,19 +73,67 @@ variable "tags" {
 }
 
 variable "image_tag" {
-  description = "Git short SHA - tag for the app image in ECR"
+  description = "Immutable Git commit SHA tag for the application image"
   type        = string
-  default     = "latest"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.image_tag))
+    error_message = "image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "prometheus_image_tag" {
-  description = "Git short SHA - tag for the prometheus image in ECR"
+  description = "Immutable Git commit SHA tag for the Prometheus image"
   type        = string
-  default     = "latest"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.prometheus_image_tag))
+    error_message = "prometheus_image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "grafana_image_tag" {
-  description = "Git short SHA - tag for the grafana image in ECR"
+  description = "Immutable Git commit SHA tag for the Grafana image"
   type        = string
-  default     = "latest"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.grafana_image_tag))
+    error_message = "grafana_image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
+}
+
+variable "create_iam_roles" {
+  description = "Create ECS execution/task IAM roles. Set false when an environment supplies pre-created roles."
+  type        = bool
+  default     = true
+}
+
+variable "external_execution_role_arn" {
+  description = "Pre-created ECS execution role ARN used when create_iam_roles is false"
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.create_iam_roles || (
+      var.external_execution_role_arn != null &&
+      can(regex("^arn:[^:]+:iam::[0-9]{12}:role/.+$", var.external_execution_role_arn))
+    )
+    error_message = "external_execution_role_arn must be a valid IAM role ARN when create_iam_roles is false."
+  }
+}
+
+variable "external_task_role_arn" {
+  description = "Pre-created ECS application task role ARN used when create_iam_roles is false"
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.create_iam_roles || (
+      var.external_task_role_arn != null &&
+      can(regex("^arn:[^:]+:iam::[0-9]{12}:role/.+$", var.external_task_role_arn))
+    )
+    error_message = "external_task_role_arn must be a valid IAM role ARN when create_iam_roles is false."
+  }
 }

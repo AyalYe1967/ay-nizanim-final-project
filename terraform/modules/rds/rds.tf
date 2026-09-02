@@ -17,24 +17,24 @@ resource "aws_db_instance" "status_page" {
   username = var.db_username
   password = random_password.db_password.result
 
-  db_subnet_group_name  = var.db_subnet_group_name
+  db_subnet_group_name   = var.db_subnet_group_name
   vpc_security_group_ids = [var.rds_security_group_id]
 
-  multi_az = false 
+  multi_az = false
 
   backup_retention_period = 1
-  skip_final_snapshot     = true 
+  skip_final_snapshot     = true
   deletion_protection     = false
 
-  publicly_accessible = false 
+  publicly_accessible = false
 
   tags = var.tags
 }
 
 resource "aws_secretsmanager_secret" "db_credentials" {
-  name = "ay-l-final-project-rds-credentials"
+  name                    = "ay-l-final-project-rds-credentials"
   recovery_window_in_days = 0 # lab/rebuild environment - not production
-  tags = var.tags
+  tags                    = var.tags
 }
 
 resource "aws_secretsmanager_secret_version" "db_credentials" {
