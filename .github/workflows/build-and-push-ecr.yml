@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "app/**"
+      - "monitoring/prometheus/**"
+      - "monitoring/grafana/**"
       - ".github/workflows/build-and-push-ecr.yml"
 
 permissions:
@@ -23,7 +25,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::992382545251:role/ay-l-final-project-github-actions-role-manual
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -32,19 +34,51 @@ jobs:
 
       - name: Build Status-Page image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-app
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build \
-            -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            -t "$ECR_REPOSITORY_URL:$IMAGE_TAG" \
             -f app/Dockerfile \
             app
 
       - name: Push Status-Page image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-app
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+
+      - name: Build Prometheus image
+        env:
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-prometheus
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t "$ECR_REPOSITORY_URL:$IMAGE_TAG" \
+            -f monitoring/prometheus/Dockerfile \
+            monitoring/prometheus
+
+      - name: Push Prometheus image
+        env:
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-prometheus
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+
+      - name: Build Grafana image
+        env:
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-grafana
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t "$ECR_REPOSITORY_URL:$IMAGE_TAG" \
+            -f monitoring/grafana/Dockerfile \
+            monitoring/grafana
+
+      - name: Push Grafana image
+        env:
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-grafana
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
