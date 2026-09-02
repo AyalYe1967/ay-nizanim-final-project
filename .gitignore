@@ -1,3 +1,11 @@
+terraform/.terraform/
+bootstrap/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+tfplan
+destroy-plan
 .env
+.venv
 __pycache__/
 *.pyc

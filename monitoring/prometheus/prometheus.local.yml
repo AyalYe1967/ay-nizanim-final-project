@@ -1,0 +1,29 @@
+# monitoring/prometheus/prometheus.local.yml
+# Local-only variant for docker-compose testing. No remote_write block —
+# there is no real AMP workspace locally, and attempting sigv4 auth against
+# a placeholder URL would just fail continuously and fill the logs.
+# The cloud version (prometheus.yml, baked into the image) is untouched.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: ay-l-final-project
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'web'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['web:8000']
+
+  - job_name: 'worker'
+    static_configs:
+      - targets: ['worker:8888']
+
+  - job_name: 'scheduler'
+    static_configs:
+      - targets: ['scheduler:8888']

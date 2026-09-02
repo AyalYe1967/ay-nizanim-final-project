@@ -1,0 +1,116 @@
+{
+  "uid": "django-web-app",
+  "title": "Django Web App",
+  "description": "HTTP-level metrics for the Status-Page Django app (web job), via django-prometheus. Metric names verified against a live /metrics response before writing this dashboard.",
+  "tags": ["django", "web", "status-page"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "time": {"from": "now-6h", "to": "now"},
+  "refresh": "30s",
+  "panels": [
+    {"id": 1, "type": "row", "title": "Overview", "collapsed": false, "gridPos": {"x": 0, "y": 0, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 2, "type": "stat", "title": "Requests/sec", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 1, "w": 6, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "reqps", "decimals": 2, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(django_http_requests_total_by_method_total{job=\"web\"}[$__rate_interval])) or vector(0)", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Error rate (5xx)", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 6, "y": 1, "w": 6, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum(rate(django_http_responses_total_by_status_total{job=\"web\", status=~\"5..\"}[$__rate_interval])) or vector(0)) / (sum(rate(django_http_responses_total_by_status_total{job=\"web\"}[$__rate_interval])) or vector(1)) * 100", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 4, "type": "stat", "title": "p95 latency (overall)", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 12, "y": 1, "w": 6, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "s", "decimals": 3, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket{job=\"web\"}[$__rate_interval])) by (le))", "refId": "A", "legendFormat": ""}]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Unknown-latency requests", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 18, "y": 1, "w": 6, "h": 4},
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(django_http_requests_unknown_latency_total{job=\"web\"}) or vector(0)", "refId": "A", "legendFormat": ""}]
+    },
+    {"id": 6, "type": "row", "title": "Requests", "collapsed": false, "gridPos": {"x": 0, "y": 5, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 7, "type": "timeseries", "title": "Requests by method", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 6, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(django_http_requests_total_by_method_total{job=\"web\"}[$__rate_interval])) by (method)", "refId": "A", "legendFormat": "{{method}}"}]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Requests by view (top 10)", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 12, "y": 6, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "topk(10, sum(rate(django_http_requests_total_by_view_transport_method_total{job=\"web\"}[$__rate_interval])) by (view))", "refId": "A", "legendFormat": "{{view}}"}]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Responses by status code", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 14, "w": 24, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(django_http_responses_total_by_status_total{job=\"web\"}[$__rate_interval])) by (status)", "refId": "A", "legendFormat": "{{status}}"}]
+    },
+    {"id": 10, "type": "row", "title": "Latency", "collapsed": false, "gridPos": {"x": 0, "y": 22, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 11, "type": "timeseries", "title": "Latency percentiles (overall)", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 23, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "s", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.50, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket{job=\"web\"}[$__rate_interval])) by (le))", "refId": "A", "legendFormat": "p50"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket{job=\"web\"}[$__rate_interval])) by (le))", "refId": "B", "legendFormat": "p95"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.99, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket{job=\"web\"}[$__rate_interval])) by (le))", "refId": "C", "legendFormat": "p99"}
+      ]
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "p95 latency by view", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 12, "y": 23, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "s", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum(rate(django_http_requests_latency_seconds_by_view_method_bucket{job=\"web\"}[$__rate_interval])) by (le, view))", "refId": "A", "legendFormat": "{{view}}"}]
+    },
+    {"id": 13, "type": "row", "title": "Responses & errors", "collapsed": false, "gridPos": {"x": 0, "y": 31, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 14, "type": "timeseries", "title": "Avg response body size", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 32, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "bytes", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(django_http_responses_body_total_bytes_sum{job=\"web\"}[$__rate_interval]) / rate(django_http_responses_body_total_bytes_count{job=\"web\"}[$__rate_interval])", "refId": "A", "legendFormat": "avg body size"}]
+    },
+    {
+      "id": 15, "type": "table", "title": "Exceptions by type", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 12, "y": 32, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}}}, "overrides": []},
+      "options": {"showHeader": true},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(increase(django_http_exceptions_total_by_type{job=\"web\"}[$__range])) by (type)", "refId": "A", "legendFormat": "", "instant": true, "format": "table"}]
+    },
+    {"id": 16, "type": "row", "title": "Process", "collapsed": false, "gridPos": {"x": 0, "y": 40, "w": 24, "h": 1}, "panels": []},
+    {
+      "id": 17, "type": "timeseries", "title": "Memory (resident)", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 0, "y": 41, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "bytes", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "process_resident_memory_bytes{job=\"web\"}", "refId": "A", "legendFormat": "RSS"}]
+    },
+    {
+      "id": 18, "type": "timeseries", "title": "CPU usage", "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"x": 12, "y": 41, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "percent", "custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "spanNulls": true}}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}, "tooltip": {"mode": "multi"}},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(process_cpu_seconds_total{job=\"web\"}[$__rate_interval]) * 100", "refId": "A", "legendFormat": "CPU %"}]
+    }
+  ],
+  "templating": {"list": []}
+}

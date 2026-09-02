@@ -1,0 +1,161 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nizanim-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: nizanim-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  status-page:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nizanim-status-page
+    networks:
+      default:
+        aliases:
+          - web
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - statuspage_media:/opt/status-page/statuspage/media
+    command:
+      - /bin/sh
+      - -c
+      - |
+        python manage.py migrate --noinput
+        python manage.py collectstatic --noinput
+        # Local development intentionally overrides the image's production
+        # Gunicorn command with Django's auto-reloading development server.
+        exec python manage.py runserver 0.0.0.0:8000 --insecure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  rq-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nizanim-rq-worker
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      status-page:
+        condition: service_healthy
+    command: ["python", "manage.py", "rqworker", "high", "default", "low"]
+    restart: unless-stopped
+
+  rq-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nizanim-rq-scheduler
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      status-page:
+        condition: service_healthy
+    command: ["python", "manage.py", "rqscheduler"]
+    restart: unless-stopped
+
+  prometheus:
+    build:
+      context: ../monitoring/prometheus
+    container_name: nizanim-prometheus
+    volumes:
+      - ../monitoring/prometheus/prometheus.local.yml:/etc/prometheus/prometheus.local.yml:ro
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  grafana:
+    build:
+      context: ../monitoring/grafana
+    container_name: nizanim-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      PROMETHEUS_URL: http://prometheus:9090
+      AMP_QUERY_URL: http://localhost:9999
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  worker:
+    image: mdawar/rq-exporter:v3.1.0
+    container_name: nizanim-worker-exporter
+    environment:
+      RQ_REDIS_URL: redis://redis:6379/0
+      RQ_EXPORTER_PORT: "8888"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler:
+    image: mdawar/rq-exporter:v3.1.0
+    container_name: nizanim-scheduler-exporter
+    environment:
+      RQ_REDIS_URL: redis://redis:6379/0
+      RQ_EXPORTER_PORT: "8888"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  statuspage_media:

@@ -1,0 +1,21 @@
+# Restricted school AWS account: Terraform uses instructor-provided roles and
+# does not create, attach policies to, or otherwise modify IAM roles.
+create_iam_roles = false
+
+external_execution_role_arn = "arn:aws:iam::123456789012:role/instructor-ecs-execution-role"
+external_task_role_arn      = "arn:aws:iam::123456789012:role/instructor-ecs-task-role"
+
+# The external execution role must trust ecs-tasks.amazonaws.com and allow ECR
+# image pulls, CloudWatch Logs writes, and Secrets Manager GetSecretValue for
+# the RDS, Django SECRET_KEY, and Grafana secrets created by this stack.
+#
+# The external task role must trust ecs-tasks.amazonaws.com and allow scoped
+# access to the static/media S3 bucket, AMP remote write/query operations, and
+# CloudWatch metric reads used by Grafana.
+
+image_tag            = "0000000"
+prometheus_image_tag = "0000000"
+grafana_image_tag    = "0000000"
+
+environment = "school"
+aws_region  = "us-east-1"

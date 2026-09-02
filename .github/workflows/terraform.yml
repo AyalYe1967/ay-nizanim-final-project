@@ -1,0 +1,94 @@
+name: Terraform Infrastructure
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_create_iam_roles: ${{ vars.TF_CREATE_IAM_ROLES || 'true' }}
+  TF_VAR_external_execution_role_arn: ${{ vars.TF_EXTERNAL_EXECUTION_ROLE_ARN || '' }}
+  TF_VAR_external_task_role_arn: ${{ vars.TF_EXTERNAL_TASK_ROLE_ARN || '' }}
+  TF_VAR_image_tag: ${{ vars.DEPLOYED_APP_IMAGE_TAG }}
+  TF_VAR_prometheus_image_tag: ${{ vars.DEPLOYED_PROMETHEUS_IMAGE_TAG }}
+  TF_VAR_grafana_image_tag: ${{ vars.DEPLOYED_GRAFANA_IMAGE_TAG }}
+
+jobs:
+  validate-and-plan:
+    name: Validate and Plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.0"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Check Terraform formatting
+        run: terraform -chdir=terraform fmt -check -recursive
+
+      - name: Initialize Terraform
+        run: terraform -chdir=terraform init
+
+      - name: Validate Terraform
+        run: terraform -chdir=terraform validate
+
+      - name: Plan Terraform changes
+        run: terraform -chdir=terraform plan -lock=true
+
+  apply:
+    name: Apply
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate-and-plan
+    runs-on: ubuntu-latest
+    environment: infrastructure
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.0"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Initialize Terraform
+        run: terraform -chdir=terraform init
+
+      - name: Apply reviewed configuration
+        run: terraform -chdir=terraform apply -lock=true -auto-approve
