@@ -34,7 +34,7 @@ jobs:
 
       - name: Build Status-Page image
         env:
-          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-app
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-app
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build \
@@ -44,14 +44,14 @@ jobs:
 
       - name: Push Status-Page image
         env:
-          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-app
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-app
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
 
       - name: Build Prometheus image
         env:
-          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-prometheus
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-prometheus
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build \
@@ -61,14 +61,14 @@ jobs:
 
       - name: Push Prometheus image
         env:
-          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-prometheus
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-prometheus
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
 
       - name: Build Grafana image
         env:
-          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-grafana
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-grafana
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build \
@@ -78,7 +78,7 @@ jobs:
 
       - name: Push Grafana image
         env:
-          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ayl-final-project-grafana
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-grafana
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
