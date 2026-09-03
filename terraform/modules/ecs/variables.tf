@@ -30,7 +30,11 @@ variable "ecr_repository_url" {
 variable "image_tag" {
   description = "Docker image tag to deploy (git SHA / build number from the CI/CD pipeline)"
   type        = string
-  default     = "latest"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.image_tag))
+    error_message = "image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "container_port" {
@@ -152,13 +156,21 @@ variable "grafana_ecr_repository_url" {
 }
 
 variable "prometheus_image_tag" {
-  type    = string
-  default = "latest"
+  type = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.prometheus_image_tag))
+    error_message = "prometheus_image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "grafana_image_tag" {
-  type    = string
-  default = "latest"
+  type = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.grafana_image_tag))
+    error_message = "grafana_image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "ecs_monitoring_security_group_id" {

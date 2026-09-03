@@ -1,17 +1,28 @@
-name: Build and Push Status-Page Image to ECR
+name: Build and Push Status-Page Images to ECR
 
 on:
   push:
     branches:
       - main
+    paths:
+      - "app/**"
+      - "monitoring/prometheus/**"
+      - "monitoring/grafana/**"
+      - ".github/workflows/build-and-push-ecr.yml"
 
 permissions:
   contents: read
-  id-token: write
+
+concurrency:
+  group: ecr-image-deployment-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -20,7 +31,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::992382545251:role/GitHubActionsECRPushRole
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -29,20 +40,99 @@ jobs:
 
       - name: Build Status-Page image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-app
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build \
-            -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
-            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
-            .
+            -t "$ECR_REPOSITORY_URL:$IMAGE_TAG" \
+            -f app/Dockerfile \
+            app
 
       - name: Push Status-Page image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-app
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+
+      - name: Build Prometheus image
+        env:
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-prometheus
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t "$ECR_REPOSITORY_URL:$IMAGE_TAG" \
+            -f monitoring/prometheus/Dockerfile \
+            monitoring/prometheus
+
+      - name: Push Prometheus image
+        env:
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-prometheus
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+
+      - name: Build Grafana image
+        env:
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-grafana
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t "$ECR_REPOSITORY_URL:$IMAGE_TAG" \
+            -f monitoring/grafana/Dockerfile \
+            monitoring/grafana
+
+      - name: Push Grafana image
+        env:
+          ECR_REPOSITORY_URL: 992382545251.dkr.ecr.us-east-1.amazonaws.com/ay-l-final-project-grafana
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+
+  update-deployment-manifest:
+    name: Update deployed image manifest
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Update deployed image tags
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          jq --arg image_tag "$IMAGE_TAG" \
+            '.image_tag = $image_tag
+             | .prometheus_image_tag = $image_tag
+             | .grafana_image_tag = $image_tag' \
+            terraform/deployed-images.auto.tfvars.json \
+            > "$RUNNER_TEMP/deployed-images.auto.tfvars.json"
+          mv "$RUNNER_TEMP/deployed-images.auto.tfvars.json" \
+            terraform/deployed-images.auto.tfvars.json
+
+      - name: Commit deployed image manifest
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add terraform/deployed-images.auto.tfvars.json
+
+          if git diff --cached --quiet; then
+            echo "Deployment manifest already references $IMAGE_TAG"
+          else
+            git commit -m "chore: deploy images at $IMAGE_TAG [skip ci]"
+            git push origin HEAD:main
+          fi
+
+      - name: Dispatch Terraform workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run terraform.yml --ref main

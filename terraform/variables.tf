@@ -73,19 +73,31 @@ variable "tags" {
 }
 
 variable "image_tag" {
-  description = "Git short SHA - tag for the app image in ECR"
+  description = "Immutable Git commit SHA tag for the application image"
   type        = string
-  default     = "latest"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.image_tag))
+    error_message = "image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "prometheus_image_tag" {
-  description = "Git short SHA - tag for the prometheus image in ECR"
+  description = "Immutable Git commit SHA tag for the Prometheus image"
   type        = string
-  default     = "latest"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.prometheus_image_tag))
+    error_message = "prometheus_image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
 
 variable "grafana_image_tag" {
-  description = "Git short SHA - tag for the grafana image in ECR"
+  description = "Immutable Git commit SHA tag for the Grafana image"
   type        = string
-  default     = "latest"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{7,40}$", var.grafana_image_tag))
+    error_message = "grafana_image_tag must be a 7-40 character hexadecimal Git commit SHA."
+  }
 }
