@@ -25,6 +25,9 @@ concurrency:
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
+  TF_VAR_create_iam_roles: "false"
+  TF_VAR_external_execution_role_arn: "arn:aws:iam::992382545251:role/ay-l-final-project-ecs-execution-role-manual"
+  TF_VAR_external_task_role_arn: "arn:aws:iam::992382545251:role/ay-l-final-project-ecs-task-role-manual"
 
 jobs:
   validate:
