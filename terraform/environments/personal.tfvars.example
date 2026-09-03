@@ -1,0 +1,12 @@
+# Personal AWS account: Terraform creates and manages the ECS roles and their
+# scoped policies. Replace the image values with immutable Git commit SHAs that
+# already exist in the corresponding ECR repositories.
+create_iam_roles = true
+
+image_tag            = "0000000"
+prometheus_image_tag = "0000000"
+grafana_image_tag    = "0000000"
+
+# Customize these values without editing Terraform source code.
+environment = "dev"
+aws_region  = "us-east-1"

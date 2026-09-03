@@ -13,12 +13,12 @@ output "cluster_arn" {
 
 output "execution_role_arn" {
   description = "Reused by future RunTask definitions (collectstatic, migrate) that need the same ECR pull + Logs permissions"
-  value       = var.execution_role_arn
+  value       = local.execution_role_arn
 }
 
 output "task_role_arn" {
   description = "Reused by future RunTask definitions that need the same runtime permissions (e.g. migrate needs DB access)"
-  value       = var.task_role_arn
+  value       = local.task_role_arn
 }
 
 output "web_service_name" {

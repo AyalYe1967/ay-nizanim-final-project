@@ -54,6 +54,8 @@ services:
       - |
         python manage.py migrate --noinput
         python manage.py collectstatic --noinput
+        # Local development intentionally overrides the image's production
+        # Gunicorn command with Django's auto-reloading development server.
         exec python manage.py runserver 0.0.0.0:8000 --insecure
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/').read()"]

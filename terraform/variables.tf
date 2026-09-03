@@ -101,3 +101,39 @@ variable "grafana_image_tag" {
     error_message = "grafana_image_tag must be a 7-40 character hexadecimal Git commit SHA."
   }
 }
+
+variable "create_iam_roles" {
+  description = "Create ECS execution/task IAM roles. Set false when an environment supplies pre-created roles."
+  type        = bool
+  default     = true
+}
+
+variable "external_execution_role_arn" {
+  description = "Pre-created ECS execution role ARN used when create_iam_roles is false"
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.create_iam_roles || (
+      var.external_execution_role_arn != null &&
+      can(regex("^arn:[^:]+:iam::[0-9]{12}:role/.+$", var.external_execution_role_arn))
+    )
+    error_message = "external_execution_role_arn must be a valid IAM role ARN when create_iam_roles is false."
+  }
+}
+
+variable "external_task_role_arn" {
+  description = "Pre-created ECS application task role ARN used when create_iam_roles is false"
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.create_iam_roles || (
+      var.external_task_role_arn != null &&
+      can(regex("^arn:[^:]+:iam::[0-9]{12}:role/.+$", var.external_task_role_arn))
+    )
+    error_message = "external_task_role_arn must be a valid IAM role ARN when create_iam_roles is false."
+  }
+}

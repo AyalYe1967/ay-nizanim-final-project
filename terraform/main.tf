@@ -1,17 +1,19 @@
+data "aws_caller_identity" "current" {}
+
 module "vpc" {
   source = "./modules/vpc"
 
-  project_name              = var.project_name
-  environment               = var.environment
-  aws_region                = var.aws_region
-  vpc_cidr                  = var.vpc_cidr
-  availability_zones        = var.availability_zones
-  public_subnet_cidrs       = var.public_subnet_cidrs
-  private_app_subnet_cidrs  = var.private_app_subnet_cidrs
-  db_subnet_cidrs           = var.db_subnet_cidrs
-  single_nat_gateway        = var.single_nat_gateway
-  container_port            = var.container_port
-  tags                      = var.tags
+  project_name             = var.project_name
+  environment              = var.environment
+  aws_region               = var.aws_region
+  vpc_cidr                 = var.vpc_cidr
+  availability_zones       = var.availability_zones
+  public_subnet_cidrs      = var.public_subnet_cidrs
+  private_app_subnet_cidrs = var.private_app_subnet_cidrs
+  db_subnet_cidrs          = var.db_subnet_cidrs
+  single_nat_gateway       = var.single_nat_gateway
+  container_port           = var.container_port
+  tags                     = var.tags
 }
 
 module "ecr" {
@@ -44,34 +46,43 @@ module "alb" {
 module "ecs" {
   source = "./modules/ecs"
 
-  vpc_id                            = module.vpc.vpc_id
-  private_subnet_ids                = module.vpc.private_app_subnet_ids
-  ecs_web_security_group_id         = module.vpc.ecs_web_security_group_id
-  ecs_worker_security_group_id      = module.vpc.ecs_worker_security_group_id
-  ecr_repository_url                = module.ecr.repository_urls["app"]
-  web_target_group_arn              = module.alb.web_target_group_arn
-  db_secret_arn                     = module.rds.secret_arn
-  redis_endpoint                    = module.elasticache.redis_endpoint
-  execution_role_arn                = "arn:aws:iam::992382545251:role/ay-l-final-project-ecs-execution-role-manual"
-  task_role_arn                     = "arn:aws:iam::992382545251:role/ay-l-final-project-ecs-task-role-manual"
-  prometheus_ecr_repository_url     = module.ecr.repository_urls["prometheus"]
-  grafana_ecr_repository_url        = module.ecr.repository_urls["grafana"]
-  ecs_monitoring_security_group_id  = module.vpc.ecs_monitoring_security_group_id
-  grafana_target_group_arn          = module.alb_grafana.grafana_target_group_arn
-  amp_remote_write_url = module.amp.remote_write_url
-  amp_query_url         = module.amp.query_url
-  static_files_bucket_arn  = module.s3.bucket_arn
-  static_files_bucket_name = module.s3.bucket_id
-  static_files_cloudfront_domain = module.s3.cloudfront_domain_name
-  image_tag             = var.image_tag
-  prometheus_image_tag   = var.prometheus_image_tag
-  grafana_image_tag      = var.grafana_image_tag
+  project_name                     = var.project_name
+  environment                      = var.environment
+  vpc_id                           = module.vpc.vpc_id
+  private_subnet_ids               = module.vpc.private_app_subnet_ids
+  ecs_web_security_group_id        = module.vpc.ecs_web_security_group_id
+  ecs_worker_security_group_id     = module.vpc.ecs_worker_security_group_id
+  ecr_repository_url               = module.ecr.repository_urls["app"]
+  web_target_group_arn             = module.alb.web_target_group_arn
+  db_secret_arn                    = module.rds.secret_arn
+  redis_endpoint                   = module.elasticache.redis_endpoint
+  create_iam_roles                 = var.create_iam_roles
+  external_execution_role_arn      = var.external_execution_role_arn
+  external_task_role_arn           = var.external_task_role_arn
+  # ALB target health checks use each task's changing private IP as Host.
+  # The web task security group only accepts traffic from the ALB security group.
+  allowed_hosts                    = "*"
+  site_url                         = var.acm_certificate_arn == null ? "http://${module.alb.dns_name}" : "https://${module.alb.dns_name}"
+  debug                            = false
+  prometheus_ecr_repository_url    = module.ecr.repository_urls["prometheus"]
+  grafana_ecr_repository_url       = module.ecr.repository_urls["grafana"]
+  ecs_monitoring_security_group_id = module.vpc.ecs_monitoring_security_group_id
+  grafana_target_group_arn         = module.alb_grafana.grafana_target_group_arn
+  amp_remote_write_url             = module.amp.remote_write_url
+  amp_query_url                    = module.amp.query_url
+  amp_workspace_arn                = module.amp.workspace_arn
+  static_files_bucket_arn          = module.s3.bucket_arn
+  static_files_bucket_name         = module.s3.bucket_id
+  static_files_cloudfront_domain   = module.s3.cloudfront_domain_name
+  image_tag                        = var.image_tag
+  prometheus_image_tag             = var.prometheus_image_tag
+  grafana_image_tag                = var.grafana_image_tag
 }
 
 module "s3" {
   source = "./modules/s3"
 
-  bucket_name = "ay-l-final-project-static"
+  bucket_name = "${lower(var.project_name)}-${var.environment}-static-${data.aws_caller_identity.current.account_id}"
   tags        = var.tags
 }
 

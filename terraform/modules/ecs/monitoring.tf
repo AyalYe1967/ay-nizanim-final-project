@@ -48,8 +48,8 @@ resource "aws_ecs_task_definition" "prometheus" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.prometheus_cpu
   memory                   = var.prometheus_memory
-  execution_role_arn       = var.execution_role_arn
-  task_role_arn             = var.task_role_arn
+  execution_role_arn       = local.execution_role_arn
+  task_role_arn            = local.task_role_arn
 
   container_definitions = jsonencode([
     {
@@ -131,8 +131,8 @@ resource "aws_ecs_task_definition" "grafana" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.grafana_cpu
   memory                   = var.grafana_memory
-  execution_role_arn       = var.execution_role_arn
-  task_role_arn             = var.task_role_arn
+  execution_role_arn       = local.execution_role_arn
+  task_role_arn            = local.task_role_arn
 
   container_definitions = jsonencode([
     {
@@ -188,8 +188,8 @@ resource "aws_ecs_service" "grafana" {
 
   load_balancer {
     target_group_arn = var.grafana_target_group_arn
-    container_name    = "grafana"
-    container_port    = var.grafana_port
+    container_name   = "grafana"
+    container_port   = var.grafana_port
   }
 
   # Client-only Service Connect: no "service" block (Grafana isn't reached
