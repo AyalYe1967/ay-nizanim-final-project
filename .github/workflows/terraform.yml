@@ -17,7 +17,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: terraform-${{ github.ref }}
@@ -26,16 +25,10 @@ concurrency:
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
-  TF_VAR_create_iam_roles: ${{ vars.TF_CREATE_IAM_ROLES || 'true' }}
-  TF_VAR_external_execution_role_arn: ${{ vars.TF_EXTERNAL_EXECUTION_ROLE_ARN || '' }}
-  TF_VAR_external_task_role_arn: ${{ vars.TF_EXTERNAL_TASK_ROLE_ARN || '' }}
-  TF_VAR_image_tag: ${{ vars.DEPLOYED_APP_IMAGE_TAG }}
-  TF_VAR_prometheus_image_tag: ${{ vars.DEPLOYED_PROMETHEUS_IMAGE_TAG }}
-  TF_VAR_grafana_image_tag: ${{ vars.DEPLOYED_GRAFANA_IMAGE_TAG }}
 
 jobs:
-  validate-and-plan:
-    name: Validate and Plan
+  validate:
+    name: Validate
     runs-on: ubuntu-latest
 
     steps:
@@ -46,31 +39,24 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.16.0"
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Check Terraform formatting
         run: terraform -chdir=terraform fmt -check -recursive
 
-      - name: Initialize Terraform
-        run: terraform -chdir=terraform init
+      - name: Initialize Terraform without the remote backend
+        run: terraform -chdir=terraform init -backend=false
 
       - name: Validate Terraform
         run: terraform -chdir=terraform validate
 
-      - name: Plan Terraform changes
-        run: terraform -chdir=terraform plan -lock=true
-
-  apply:
-    name: Apply
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: validate-and-plan
+  plan-and-apply:
+    name: Plan and Apply
+    if: github.ref == 'refs/heads/main'
+    needs: validate
     runs-on: ubuntu-latest
-    environment: infrastructure
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -90,5 +76,8 @@ jobs:
       - name: Initialize Terraform
         run: terraform -chdir=terraform init
 
-      - name: Apply reviewed configuration
-        run: terraform -chdir=terraform apply -lock=true -auto-approve
+      - name: Create Terraform plan
+        run: terraform -chdir=terraform plan -lock=true -out=tfplan
+
+      - name: Apply Terraform plan
+        run: terraform -chdir=terraform apply -lock=true -input=false tfplan
