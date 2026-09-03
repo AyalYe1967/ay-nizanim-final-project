@@ -46,19 +46,19 @@ module "alb" {
 module "ecs" {
   source = "./modules/ecs"
 
-  project_name                     = var.project_name
-  environment                      = var.environment
-  vpc_id                           = module.vpc.vpc_id
-  private_subnet_ids               = module.vpc.private_app_subnet_ids
-  ecs_web_security_group_id        = module.vpc.ecs_web_security_group_id
-  ecs_worker_security_group_id     = module.vpc.ecs_worker_security_group_id
-  ecr_repository_url               = module.ecr.repository_urls["app"]
-  web_target_group_arn             = module.alb.web_target_group_arn
-  db_secret_arn                    = module.rds.secret_arn
-  redis_endpoint                   = module.elasticache.redis_endpoint
-  create_iam_roles                 = var.create_iam_roles
-  external_execution_role_arn      = var.external_execution_role_arn
-  external_task_role_arn           = var.external_task_role_arn
+  project_name                 = var.project_name
+  environment                  = var.environment
+  vpc_id                       = module.vpc.vpc_id
+  private_subnet_ids           = module.vpc.private_app_subnet_ids
+  ecs_web_security_group_id    = module.vpc.ecs_web_security_group_id
+  ecs_worker_security_group_id = module.vpc.ecs_worker_security_group_id
+  ecr_repository_url           = module.ecr.repository_urls["app"]
+  web_target_group_arn         = module.alb.web_target_group_arn
+  db_secret_arn                = module.rds.secret_arn
+  redis_endpoint               = module.elasticache.redis_endpoint
+  create_iam_roles             = var.create_iam_roles
+  external_execution_role_arn  = var.external_execution_role_arn
+  external_task_role_arn       = var.external_task_role_arn
   # ALB target health checks use each task's changing private IP as Host.
   # The web task security group only accepts traffic from the ALB security group.
   allowed_hosts                    = "*"
