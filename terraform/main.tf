@@ -82,7 +82,7 @@ module "ecs" {
 module "s3" {
   source = "./modules/s3"
 
-  bucket_name = "${lower(var.project_name)}-${var.environment}-static-${data.aws_caller_identity.current.account_id}"
+  bucket_name = "ay-l-final-project-static"
   tags        = var.tags
 }
 

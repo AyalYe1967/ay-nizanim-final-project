@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wordle Web Game</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+<style>
+    .board {
+        display: grid;
+        grid-template-rows: repeat({{ max_attempts }}, 1fr);
+        gap: 6px;
+        margin: 10px 0 22px;
+    }
+
+    .row {
+        display: grid;
+        grid-template-columns: repeat({{ word_length }}, 56px);
+        gap: 6px;
+    }
+
+    .row.shake { animation: shake 0.4s; }
+
+    @keyframes shake {
+        10%, 90% { transform: translateX(-2px); }
+        20%, 80% { transform: translateX(4px); }
+        30%, 50%, 70% { transform: translateX(-8px); }
+        40%, 60% { transform: translateX(8px); }
+    }
+
+    .cell {
+        width: 56px;
+        height: 56px;
+        background-color: var(--tile-empty);
+        border: 2px solid var(--tile-border);
+        border-radius: 8px;
+        font-size: 26px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-transform: uppercase;
+        color: var(--text);
+        transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .cell.filled {
+        border-color: var(--accent);
+        transform: scale(1.03);
+    }
+
+    .cell.flip {
+        animation: flip 0.5s ease forwards;
+    }
+
+    @keyframes flip {
+        0% { transform: rotateX(0deg); }
+        45% { transform: rotateX(90deg); }
+        55% { transform: rotateX(90deg); }
+        100% { transform: rotateX(0deg); }
+    }
+
+    .cell.correct { background-color: var(--correct); border-color: var(--correct); color: #0f2a1f; }
+    .cell.present { background-color: var(--present); border-color: var(--present); color: #2a1c00; }
+    .cell.absent  { background-color: var(--absent);  border-color: var(--absent); }
+</style>
+</head>
+<body>
+
+    <a class="back-link" href="{{ url_for('home') }}">&larr; all games</a>
+
+    <header>
+        <h1>WORDLE</h1>
+        <div class="subtitle">{{ word_length }} letters &middot; {{ max_attempts }} attempts</div>
+    </header>
+
+    <div class="board" id="board"></div>
+
+    <div class="msg" id="message"></div>
+
+    <div class="keyboard" id="keyboard"></div>
+
+    <button class="primary-btn" id="newGameBtn" onclick="location.reload()">Play Again</button>
+
+    <script>
+        const WORD_LENGTH = {{ word_length }};
+        const MAX_ATTEMPTS = {{ max_attempts }};
+
+        let currentGuess = '';
+        let submittedRows = 0;
+        let gameOver = false;
+        const keyStatus = {};
+        const statusRank = { absent: 1, present: 2, correct: 3 };
+
+        const KEY_ROWS = [
+            ['Q','W','E','R','T','Y','U','I','O','P'],
+            ['A','S','D','F','G','H','J','K','L'],
+            ['ENTER','Z','X','C','V','B','N','M','BACK'],
+        ];
+
+        function buildBoard() {
+            const board = document.getElementById('board');
+            for (let r = 0; r < MAX_ATTEMPTS; r++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.id = `row-${r}`;
+                for (let c = 0; c < WORD_LENGTH; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.id = `cell-${r}-${c}`;
+                    row.appendChild(cell);
+                }
+                board.appendChild(row);
+            }
+        }
+
+        function buildKeyboard() {
+            const keyboard = document.getElementById('keyboard');
+            KEY_ROWS.forEach(rowKeys => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'key-row';
+                rowKeys.forEach(k => {
+                    const btn = document.createElement('button');
+                    btn.className = 'key' + (k === 'ENTER' || k === 'BACK' ? ' wide' : '');
+                    btn.textContent = k === 'BACK' ? '⌫' : (k === 'ENTER' ? 'Enter' : k);
+                    btn.dataset.key = k;
+                    btn.addEventListener('click', () => pressKey(k));
+                    rowEl.appendChild(btn);
+                });
+                keyboard.appendChild(rowEl);
+            });
+        }
+
+        function renderCurrentRow() {
+            if (submittedRows >= MAX_ATTEMPTS) return;
+            for (let c = 0; c < WORD_LENGTH; c++) {
+                const cell = document.getElementById(`cell-${submittedRows}-${c}`);
+                const letter = currentGuess[c];
+                cell.textContent = letter ? letter.toUpperCase() : '';
+                cell.classList.toggle('filled', !!letter);
+            }
+        }
+
+        function shakeCurrentRow() {
+            const row = document.getElementById(`row-${submittedRows}`);
+            if (!row) return;
+            row.classList.add('shake');
+            setTimeout(() => row.classList.remove('shake'), 400);
+        }
+
+        function renderSubmittedRow(rowIndex, result) {
+            result.forEach((item, c) => {
+                const cell = document.getElementById(`cell-${rowIndex}-${c}`);
+                cell.textContent = item.letter;
+                setTimeout(() => cell.classList.add('flip', item.status), c * 150);
+
+                const prev = keyStatus[item.letter];
+                if (!prev || statusRank[item.status] > statusRank[prev]) {
+                    keyStatus[item.letter] = item.status;
+                    const keyEl = document.querySelector(`.key[data-key="${item.letter}"]`);
+                    if (keyEl) {
+                        keyEl.classList.remove('correct', 'present', 'absent');
+                        keyEl.classList.add(item.status);
+                    }
+                }
+            });
+        }
+
+        function setMessage(text) {
+            document.getElementById('message').textContent = text;
+        }
+
+        function endGame(won, correctWord) {
+            gameOver = true;
+            setMessage(won ? '🎉 You got it!' : `💀 Out of attempts — the word was ${correctWord}`);
+            document.getElementById('newGameBtn').classList.add('visible');
+        }
+
+        async function submitGuess() {
+            if (gameOver) return;
+
+            if (currentGuess.length !== WORD_LENGTH) {
+                shakeCurrentRow();
+                setMessage(`Enter exactly ${WORD_LENGTH} letters`);
+                return;
+            }
+
+            try {
+                const response = await fetch('/wordle/guess', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ guess: currentGuess })
+                });
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    shakeCurrentRow();
+                    setMessage(data.error || 'Something went wrong');
+                    return;
+                }
+
+                const lastResult = data.history[data.history.length - 1].result;
+                renderSubmittedRow(submittedRows, lastResult);
+                submittedRows++;
+                currentGuess = '';
+
+                if (data.won) {
+                    setTimeout(() => endGame(true), WORD_LENGTH * 150 + 200);
+                } else if (data.game_over) {
+                    setTimeout(() => endGame(false, data.correct_word), WORD_LENGTH * 150 + 200);
+                } else {
+                    setMessage(`${data.attempts_left} attempts left`);
+                }
+            } catch (err) {
+                setMessage('Network error, please try again');
+            }
+        }
+
+        function pressKey(key) {
+            if (gameOver) return;
+            if (key === 'ENTER') { submitGuess(); return; }
+            if (key === 'BACK') {
+                currentGuess = currentGuess.slice(0, -1);
+                renderCurrentRow();
+                return;
+            }
+            if (/^[A-Z]$/.test(key) && currentGuess.length < WORD_LENGTH) {
+                currentGuess += key.toLowerCase();
+                renderCurrentRow();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toUpperCase();
+            if (key === 'ENTER') pressKey('ENTER');
+            else if (key === 'BACKSPACE') pressKey('BACK');
+            else if (/^[A-Z]$/.test(key) && key.length === 1) pressKey(key);
+        });
+
+        buildBoard();
+        buildKeyboard();
+        setMessage(`Guess the ${WORD_LENGTH}-letter word`);
+    </script>
+</body>
+</html>

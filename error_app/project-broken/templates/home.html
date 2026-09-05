@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Games</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+<style>
+    body { padding-top: 60px; }
+
+    header { margin-bottom: 34px; }
+
+    .lobby {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 24px;
+        width: 100%;
+        max-width: 620px;
+    }
+
+    .game-card {
+        background: var(--surface);
+        border: 1px solid var(--tile-border);
+        border-radius: 16px;
+        padding: 28px 22px;
+        text-decoration: none;
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        text-align: center;
+        transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+    }
+
+    .game-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent);
+        background-color: var(--surface-hover);
+    }
+
+    .game-icon {
+        font-size: 42px;
+        line-height: 1;
+    }
+
+    .game-name {
+        font-size: 19px;
+        font-weight: 800;
+        letter-spacing: 1px;
+    }
+
+    .game-desc {
+        font-size: 13px;
+        color: var(--text-dim);
+        line-height: 1.5;
+    }
+
+    .game-tag {
+        margin-top: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: var(--accent);
+        text-transform: uppercase;
+    }
+</style>
+</head>
+<body>
+
+    <header>
+        <h1>WORD GAMES</h1>
+        <div class="subtitle">pick a game to play</div>
+    </header>
+
+    <div class="lobby">
+        <a class="game-card" href="{{ url_for('wordle_page') }}">
+            <div class="game-icon">🟩</div>
+            <div class="game-name">WORDLE</div>
+            <div class="game-desc">Guess the 5-letter word in 6 tries. Tiles tell you how close you are.</div>
+            <div class="game-tag">Play →</div>
+        </a>
+
+        <a class="game-card" href="{{ url_for('hangman_page') }}">
+            <div class="game-icon">🎩</div>
+            <div class="game-name">HANGMAN</div>
+            <div class="game-desc">Guess the hidden word one letter at a time before the drawing is complete.</div>
+            <div class="game-tag">Play →</div>
+        </a>
+    </div>
+
+</body>
+</html>
