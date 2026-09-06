@@ -40,6 +40,7 @@ module "alb" {
   vpc_id                = module.vpc.vpc_id
   public_subnet_ids     = module.vpc.public_subnet_ids
   alb_security_group_id = module.vpc.alb_security_group_id
+  enable_https          = local.https_enabled
   certificate_arn       = local.effective_certificate_arn
 }
 

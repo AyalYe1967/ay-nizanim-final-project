@@ -8,16 +8,15 @@ locals {
   )
 
   manage_certificate = local.domain_name != null && local.route53_zone_id != null && local.existing_certificate_arn == null
+  https_enabled = local.domain_name != null && (
+    local.existing_certificate_arn != null || local.route53_zone_id != null
+  )
   effective_certificate_arn = local.domain_name == null ? null : (
     local.existing_certificate_arn != null
     ? local.existing_certificate_arn
     : try(aws_acm_certificate_validation.status_page[0].certificate_arn, null)
   )
-  status_page_url = local.domain_name == null ? "http://${module.alb.dns_name}" : format(
-    "%s://%s",
-    local.effective_certificate_arn == null ? "http" : "https",
-    local.domain_name
-  )
+  status_page_url = local.https_enabled ? "https://${local.domain_name}" : "http://${module.alb.dns_name}"
 }
 
 resource "aws_acm_certificate" "status_page" {
