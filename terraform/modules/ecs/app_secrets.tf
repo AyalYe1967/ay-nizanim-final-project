@@ -1,6 +1,7 @@
 # =========================================================
-# Django SECRET_KEY — plain string secret consumed by every
-# Status-Page task through the ECS secrets integration.
+# Django SECRET_KEY — Secrets Manager, same pattern as grafana_admin
+# in monitoring.tf. Plain string secret (not JSON), so valueFrom in
+# ecs.tf references the ARN directly with no ":key::" suffix.
 # =========================================================
 resource "random_password" "django_secret_key" {
   length  = 50

@@ -58,6 +58,16 @@ variable "web_target_group_arn" {
   type        = string
 }
 
+variable "alb_arn_suffix" {
+  description = "ARN suffix of the ALB - required for the ALBRequestCountPerTarget autoscaling policy's resource_label"
+  type        = string
+}
+
+variable "web_target_group_arn_suffix" {
+  description = "ARN suffix of the web target group - required for the ALBRequestCountPerTarget autoscaling policy's resource_label"
+  type        = string
+}
+
 variable "db_secret_arn" {
   description = "Secrets Manager ARN for RDS credentials - scopes the Task Role policy and used as a container secret"
   type        = string
@@ -327,4 +337,31 @@ variable "collectstatic_cpu" {
 variable "collectstatic_memory" {
   type    = number
   default = 512
+}
+
+#=======================
+#variable for auto scale:
+
+variable "web_min_capacity" {
+  description = "Minimum number of running tasks for the web service (Application Auto Scaling floor)"
+  type        = number
+  default     = 1
+}
+
+variable "web_max_capacity" {
+  description = "Maximum number of running tasks for the web service (Application Auto Scaling ceiling)"
+  type        = number
+  default     = 4
+}
+
+variable "web_autoscaling_request_count_target" {
+  description = "Target ALB requests per target before scaling out (ALBRequestCountPerTarget policy)"
+  type        = number
+  default     = 1000
+}
+
+variable "web_autoscaling_cpu_target" {
+  description = "Target average CPU utilization percentage before scaling out (ECSServiceAverageCPUUtilization policy - safety-net policy)"
+  type        = number
+  default     = 70
 }

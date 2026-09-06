@@ -55,6 +55,8 @@ module "ecs" {
   ecs_worker_security_group_id = module.vpc.ecs_worker_security_group_id
   ecr_repository_url           = module.ecr.repository_urls["app"]
   web_target_group_arn         = module.alb.web_target_group_arn
+  alb_arn_suffix               = module.alb.arn_suffix
+  web_target_group_arn_suffix  = module.alb.web_target_group_arn_suffix
   db_secret_arn                = module.rds.secret_arn
   redis_endpoint               = module.elasticache.redis_endpoint
   create_iam_roles             = var.create_iam_roles
