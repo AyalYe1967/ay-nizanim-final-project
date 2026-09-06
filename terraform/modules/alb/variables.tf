@@ -19,6 +19,12 @@ variable "certificate_arn" {
   default     = null
 }
 
+variable "enable_https" {
+  description = "Whether to create the HTTPS listener and redirect HTTP traffic to it"
+  type        = bool
+  default     = false
+}
+
 variable "health_check_path" {
   description = "Health check path for the target group - liveness endpoint (/ping/), not the deep readiness check (/health/)"
   type        = string
