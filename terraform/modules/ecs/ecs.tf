@@ -116,11 +116,17 @@ resource "aws_ecs_service" "web" {
   desired_count   = var.web_desired_count
   launch_type     = "FARGATE"
 
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [var.ecs_web_security_group_id]
     assign_public_ip = false
   }
+
+}
 
   load_balancer {
     target_group_arn = var.web_target_group_arn
