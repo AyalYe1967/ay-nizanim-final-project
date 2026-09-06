@@ -72,7 +72,7 @@ class Command(BaseCommand):
                 f"Superuser '{username}' already exists - leaving password untouched."
             )
 
-        has_any_device = devices_for_user(user, confirmed=True).exists()
+        has_any_device = any(devices_for_user(user, confirmed=True))
 
         if has_any_device:
             self.stdout.write(
