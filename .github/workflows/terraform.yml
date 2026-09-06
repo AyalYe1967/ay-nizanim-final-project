@@ -28,6 +28,9 @@ env:
   TF_VAR_create_iam_roles: "false"
   TF_VAR_external_execution_role_arn: "arn:aws:iam::992382545251:role/ay-l-final-project-ecs-execution-role-manual"
   TF_VAR_external_task_role_arn: "arn:aws:iam::992382545251:role/ay-l-final-project-ecs-task-role-manual"
+  TF_VAR_domain_name: ${{ vars.STATUS_PAGE_DOMAIN_NAME }}
+  TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
+  TF_VAR_acm_certificate_arn: ${{ vars.ACM_CERTIFICATE_ARN }}
 
 jobs:
   validate:
@@ -84,3 +87,87 @@ jobs:
 
       - name: Apply Terraform plan
         run: terraform -chdir=terraform apply -lock=true -input=false tfplan
+
+  post-deploy-tasks:
+    name: Run migrate / collectstatic / bootstrap admin
+    needs: plan-and-apply
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.0"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Initialize Terraform
+        run: terraform -chdir=terraform init
+
+      - name: Read Terraform outputs
+        id: tf
+        run: |
+          echo "cluster=$(terraform -chdir=terraform output -raw ecs_cluster_name)" >> "$GITHUB_OUTPUT"
+          echo "migrate_task_def=$(terraform -chdir=terraform output -raw migrate_task_definition_arn)" >> "$GITHUB_OUTPUT"
+          echo "collectstatic_task_def=$(terraform -chdir=terraform output -raw collectstatic_task_definition_arn)" >> "$GITHUB_OUTPUT"
+          echo "subnets=$(terraform -chdir=terraform output -json private_app_subnet_ids | jq -r 'join(",")')" >> "$GITHUB_OUTPUT"
+          echo "security_group=$(terraform -chdir=terraform output -raw ecs_worker_security_group_id)" >> "$GITHUB_OUTPUT"
+
+      - name: Run database migration
+        run: |
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${{ steps.tf.outputs.cluster }}" \
+            --task-definition "${{ steps.tf.outputs.migrate_task_def }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.tf.outputs.subnets }}],securityGroups=[${{ steps.tf.outputs.security_group }}],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' --output text)
+          aws ecs wait tasks-stopped --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+
+      - name: Run collectstatic
+        run: |
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${{ steps.tf.outputs.cluster }}" \
+            --task-definition "${{ steps.tf.outputs.collectstatic_task_def }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.tf.outputs.subnets }}],securityGroups=[${{ steps.tf.outputs.security_group }}],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' --output text)
+          aws ecs wait tasks-stopped --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "collectstatic failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+
+      - name: Bootstrap admin user
+        run: |
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${{ steps.tf.outputs.cluster }}" \
+            --task-definition "${{ steps.tf.outputs.migrate_task_def }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ steps.tf.outputs.subnets }}],securityGroups=[${{ steps.tf.outputs.security_group }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"migrate","command":["python","manage.py","bootstrap_admin"]}]}' \
+            --query 'tasks[0].taskArn' --output text)
+          aws ecs wait tasks-stopped --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "bootstrap_admin failed with exit code $EXIT_CODE"
+            exit 1
+          fi

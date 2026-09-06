@@ -86,6 +86,16 @@ output "alb_dns_name" {
   value = module.alb.dns_name
 }
 
+output "status_page_url" {
+  description = "Public Status-Page URL, using the custom HTTPS domain when configured"
+  value       = local.status_page_url
+}
+
+output "status_page_certificate_arn" {
+  description = "ACM certificate used by the Status-Page ALB HTTPS listener"
+  value       = local.effective_certificate_arn
+}
+
 output "alb_web_target_group_arn" {
   value = module.alb.web_target_group_arn
 }

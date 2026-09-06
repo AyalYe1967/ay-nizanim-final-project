@@ -40,7 +40,7 @@ module "alb" {
   vpc_id                = module.vpc.vpc_id
   public_subnet_ids     = module.vpc.public_subnet_ids
   alb_security_group_id = module.vpc.alb_security_group_id
-  certificate_arn       = var.acm_certificate_arn
+  certificate_arn       = local.effective_certificate_arn
 }
 
 module "ecs" {
@@ -62,7 +62,7 @@ module "ecs" {
   # ALB target health checks use each task's changing private IP as Host.
   # The web task security group only accepts traffic from the ALB security group.
   allowed_hosts                    = "*"
-  site_url                         = var.acm_certificate_arn == null ? "http://${module.alb.dns_name}" : "https://${module.alb.dns_name}"
+  site_url                         = local.status_page_url
   debug                            = false
   prometheus_ecr_repository_url    = module.ecr.repository_urls["prometheus"]
   grafana_ecr_repository_url       = module.ecr.repository_urls["grafana"]

@@ -25,6 +25,12 @@ resource "aws_cloudwatch_log_group" "collectstatic" {
 # python manage.py migrate --noinput. Async run-task - the pipeline must
 # `aws ecs wait tasks-stopped` and check exitCode == 0 itself; Terraform
 # only defines the task shape.
+#
+# This task definition is also reused (via containerOverrides.command)
+# to run `bootstrap_admin` right after migrate succeeds - same image,
+# same role, same network config, no separate task definition needed.
+# That's why the DJANGO_ADMIN_* secrets are wired in below even though
+# the default `migrate` command doesn't use them.
 resource "aws_ecs_task_definition" "migrate" {
   family                   = "ay-l-final-project-migrate"
   network_mode             = "awsvpc"
@@ -40,7 +46,12 @@ resource "aws_ecs_task_definition" "migrate" {
       image       = "${var.ecr_repository_url}:${var.image_tag}"
       command     = ["python", "manage.py", "migrate", "--noinput"]
       environment = local.status_page_environment
-      secrets     = local.status_page_secrets
+      secrets = concat(local.status_page_secrets, [
+        { name = "DJANGO_ADMIN_USERNAME", valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:username::" },
+        { name = "DJANGO_ADMIN_EMAIL", valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:email::" },
+        { name = "DJANGO_ADMIN_PASSWORD", valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:password::" },
+        { name = "DJANGO_ADMIN_OTP_TOKEN", valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:otp_token::" },
+      ])
       logConfiguration = {
         logDriver = "awslogs"
         options = {

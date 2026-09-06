@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hangman Web Game</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+<style>
+    .layout {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .gallows {
+        width: 200px;
+        height: 220px;
+    }
+
+    .gallows line, .gallows circle {
+        fill: none;
+        stroke-linecap: round;
+    }
+
+    .gallows .rig {
+        stroke: var(--tile-border);
+        stroke-width: 4;
+    }
+
+    .gallows .part {
+        stroke: var(--wrong);
+        stroke-width: 4;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+
+    .gallows .part.visible { opacity: 1; }
+
+    .category {
+        color: var(--text-dim);
+        font-size: 12px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+
+    .word {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        margin: 6px 0 18px;
+        max-width: 480px;
+    }
+
+    .letter-box {
+        width: 40px;
+        height: 48px;
+        border-bottom: 3px solid var(--tile-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text);
+        text-transform: uppercase;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .letter-box.filled {
+        border-color: var(--correct);
+        transform: translateY(-2px);
+    }
+
+    .attempts {
+        color: var(--text-dim);
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+</style>
+</head>
+<body>
+
+    <a class="back-link" href="{{ url_for('home') }}">&larr; all games</a>
+
+    <header>
+        <h1>HANGMAN</h1>
+        <div class="subtitle">guess the word one letter at a time</div>
+    </header>
+
+    <div class="layout">
+        <svg class="gallows" viewBox="0 0 200 250">
+            <line class="rig" x1="20" y1="230" x2="120" y2="230"></line>
+            <line class="rig" x1="60" y1="230" x2="60" y2="20"></line>
+            <line class="rig" x1="60" y1="20" x2="150" y2="20"></line>
+            <line class="rig" x1="150" y1="20" x2="150" y2="45"></line>
+
+            <circle id="part-head" class="part" cx="150" cy="62" r="17"></circle>
+            <line id="part-body" class="part" x1="150" y1="79" x2="150" y2="145"></line>
+            <line id="part-arm-left" class="part" x1="150" y1="95" x2="122" y2="120"></line>
+            <line id="part-arm-right" class="part" x1="150" y1="95" x2="178" y2="120"></line>
+            <line id="part-leg-left" class="part" x1="150" y1="145" x2="126" y2="180"></line>
+            <line id="part-leg-right" class="part" x1="150" y1="145" x2="174" y2="180"></line>
+        </svg>
+
+        <div class="category">Category: {{ category }}</div>
+        <div class="attempts" id="attempts"></div>
+        <div class="word" id="word"></div>
+    </div>
+
+    <div class="msg" id="message"></div>
+
+    <div class="keyboard" id="keyboard"></div>
+
+    <button class="primary-btn" id="newGameBtn" onclick="location.reload()">Play Again</button>
+
+    <script>
+        const WORD_LENGTH = {{ word_length }};
+        const MAX_WRONG = {{ max_wrong }};
+
+        let gameOver = false;
+        let wrongCount = 0;
+
+        const PARTS = ['head', 'body', 'arm-left', 'arm-right', 'leg-left', 'leg-right'];
+
+        const KEY_ROWS = [
+            ['Q','W','E','R','T','Y','U','I','O','P'],
+            ['A','S','D','F','G','H','J','K','L'],
+            ['Z','X','C','V','B','N','M'],
+        ];
+
+        function buildWord() {
+            const word = document.getElementById('word');
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                const box = document.createElement('div');
+                box.className = 'letter-box';
+                box.id = `letter-${i}`;
+                word.appendChild(box);
+            }
+        }
+
+        function buildKeyboard() {
+            const keyboard = document.getElementById('keyboard');
+            KEY_ROWS.forEach(rowKeys => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'key-row';
+                rowKeys.forEach(k => {
+                    const btn = document.createElement('button');
+                    btn.className = 'key';
+                    btn.textContent = k;
+                    btn.dataset.key = k;
+                    btn.addEventListener('click', () => guessLetter(k));
+                    rowEl.appendChild(btn);
+                });
+                keyboard.appendChild(rowEl);
+            });
+        }
+
+        function setMessage(text) {
+            document.getElementById('message').textContent = text;
+        }
+
+        function setAttempts() {
+            document.getElementById('attempts').textContent =
+                `${MAX_WRONG - wrongCount} of ${MAX_WRONG} attempts left`;
+        }
+
+        function renderDisplay(display) {
+            display.forEach((letter, i) => {
+                const box = document.getElementById(`letter-${i}`);
+                box.textContent = letter;
+                box.classList.toggle('filled', !!letter);
+            });
+        }
+
+        function renderGallows(count) {
+            for (let i = 0; i < PARTS.length; i++) {
+                document.getElementById(`part-${PARTS[i]}`).classList.toggle('visible', i < count);
+            }
+        }
+
+        function markKey(letter, status) {
+            const keyEl = document.querySelector(`.key[data-key="${letter}"]`);
+            if (!keyEl) return;
+            keyEl.classList.remove('correct', 'wrong');
+            keyEl.classList.add(status);
+            keyEl.disabled = true;
+        }
+
+        function endGame(won, correctWord) {
+            gameOver = true;
+            setMessage(won ? '🎉 You saved yourself!' : `💀 Game over — the word was ${correctWord}`);
+            document.getElementById('newGameBtn').classList.add('visible');
+        }
+
+        async function guessLetter(letter) {
+            if (gameOver) return;
+
+            const keyEl = document.querySelector(`.key[data-key="${letter}"]`);
+            if (keyEl && keyEl.disabled) return;
+
+            try {
+                const response = await fetch('/hangman/guess', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ letter })
+                });
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    setMessage(data.error || 'Something went wrong');
+                    return;
+                }
+
+                renderDisplay(data.display);
+                wrongCount = data.wrong_count;
+                renderGallows(wrongCount);
+                setAttempts();
+
+                data.correct_letters.forEach(l => markKey(l, 'correct'));
+                data.wrong_letters.forEach(l => markKey(l, 'wrong'));
+
+                if (!data.game_over) {
+                    setMessage('Keep guessing!');
+                } else {
+                    endGame(data.won, data.correct_word);
+                    if (!data.won) renderDisplay(data.correct_word.split(''));
+                }
+            } catch (err) {
+                setMessage('Network error, please try again');
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toUpperCase();
+            if (/^[A-Z]$/.test(key) && key.length === 1) guessLetter(key);
+        });
+
+        buildWord();
+        buildKeyboard();
+        setAttempts();
+        setMessage('Pick a letter to begin');
+    </script>
+</body>
+</html>

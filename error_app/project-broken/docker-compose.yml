@@ -1,0 +1,9 @@
+services:
+  wordle:
+    build: .
+    container_name: wordle_game
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-prod}
+    restart: unless-stopped
