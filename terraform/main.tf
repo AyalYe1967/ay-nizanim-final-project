@@ -78,6 +78,11 @@ module "ecs" {
   image_tag                        = var.image_tag
   prometheus_image_tag             = var.prometheus_image_tag
   grafana_image_tag                = var.grafana_image_tag
+
+  depends_on = [
+    module.alb,
+    module.alb_grafana,
+  ]
 }
 
 module "s3" {
