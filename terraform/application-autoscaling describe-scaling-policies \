@@ -1,0 +1,61 @@
+{
+    "ScalingPolicies": [
+        {
+            "PolicyARN": "arn:aws:autoscaling:us-east-1:992382545251:scalingPolicy:a2339982-4559-47e7-938a-c12a56a059b8:resource/ecs/service/ay-l-final-project-cluster/ay-l-final-project-web:policyName/ay-l-final-project-web-cpu",
+            "PolicyName": "ay-l-final-project-web-cpu",
+            "ServiceNamespace": "ecs",
+            "ResourceId": "service/ay-l-final-project-cluster/ay-l-final-project-web",
+            "ScalableDimension": "ecs:service:DesiredCount",
+            "PolicyType": "TargetTrackingScaling",
+            "TargetTrackingScalingPolicyConfiguration": {
+                "TargetValue": 70.0,
+                "PredefinedMetricSpecification": {
+                    "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+                },
+                "ScaleOutCooldown": 60,
+                "ScaleInCooldown": 180,
+                "DisableScaleIn": false
+            },
+            "Alarms": [
+                {
+                    "AlarmName": "TargetTracking-service/ay-l-final-project-cluster/ay-l-final-project-web-AlarmHigh-7053fa6e-156d-4456-b0a7-5395130f5bb4",
+                    "AlarmARN": "arn:aws:cloudwatch:us-east-1:992382545251:alarm:TargetTracking-service/ay-l-final-project-cluster/ay-l-final-project-web-AlarmHigh-7053fa6e-156d-4456-b0a7-5395130f5bb4"
+                },
+                {
+                    "AlarmName": "TargetTracking-service/ay-l-final-project-cluster/ay-l-final-project-web-AlarmLow-b38c31fd-edaa-418e-b6d9-f06e47ba6336",
+                    "AlarmARN": "arn:aws:cloudwatch:us-east-1:992382545251:alarm:TargetTracking-service/ay-l-final-project-cluster/ay-l-final-project-web-AlarmLow-b38c31fd-edaa-418e-b6d9-f06e47ba6336"
+                }
+            ],
+            "CreationTime": "2026-09-06T20:48:23.941000+03:00"
+        },
+        {
+            "PolicyARN": "arn:aws:autoscaling:us-east-1:992382545251:scalingPolicy:a2339982-4559-47e7-938a-c12a56a059b8:resource/ecs/service/ay-l-final-project-cluster/ay-l-final-project-web:policyName/ay-l-final-project-web-request-count",
+            "PolicyName": "ay-l-final-project-web-request-count",
+            "ServiceNamespace": "ecs",
+            "ResourceId": "service/ay-l-final-project-cluster/ay-l-final-project-web",
+            "ScalableDimension": "ecs:service:DesiredCount",
+            "PolicyType": "TargetTrackingScaling",
+            "TargetTrackingScalingPolicyConfiguration": {
+                "TargetValue": 1000.0,
+                "PredefinedMetricSpecification": {
+                    "PredefinedMetricType": "ALBRequestCountPerTarget",
+                    "ResourceLabel": "app/ay-l-final-project-alb/c79c27a0a700ec54/targetgroup/ay-l-final-project-tg-web/d76ee08ecba26915"
+                },
+                "ScaleOutCooldown": 60,
+                "ScaleInCooldown": 180,
+                "DisableScaleIn": false
+            },
+            "Alarms": [
+                {
+                    "AlarmName": "TargetTracking-service/ay-l-final-project-cluster/ay-l-final-project-web-AlarmHigh-05510ca6-913b-42d7-bd33-3df52e106553",
+                    "AlarmARN": "arn:aws:cloudwatch:us-east-1:992382545251:alarm:TargetTracking-service/ay-l-final-project-cluster/ay-l-final-project-web-AlarmHigh-05510ca6-913b-42d7-bd33-3df52e106553"
+                },
+                {
+                    "AlarmName": "TargetTracking-service/ay-l-final-project-cluster/ay-l-final-project-web-AlarmLow-282a32cd-e9aa-40ce-967d-640be28ad3cf",
+                    "AlarmARN": "arn:aws:cloudwatch:us-east-1:992382545251:alarm:TargetTracking-service/ay-l-final-project-cluster/ay-l-final-project-web-AlarmLow-282a32cd-e9aa-40ce-967d-640be28ad3cf"
+                }
+            ],
+            "CreationTime": "2026-09-06T20:48:24.474000+03:00"
+        }
+    ]
+}
