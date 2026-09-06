@@ -41,7 +41,7 @@ resource "random_password" "django_admin_password" {
 }
 
 resource "random_id" "django_admin_otp_token" {
-  byte_length = 8 
+  byte_length = 8
 }
 
 resource "aws_secretsmanager_secret" "django_admin" {
