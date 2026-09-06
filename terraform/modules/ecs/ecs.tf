@@ -126,8 +126,6 @@ resource "aws_ecs_service" "web" {
     assign_public_ip = false
   }
 
-}
-
   load_balancer {
     target_group_arn = var.web_target_group_arn
     container_name   = "web"
