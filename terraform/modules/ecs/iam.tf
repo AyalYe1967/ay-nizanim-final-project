@@ -37,6 +37,7 @@ data "aws_iam_policy_document" "execution_secrets" {
     resources = [
       var.db_secret_arn,
       aws_secretsmanager_secret.django_secret_key.arn,
+      aws_secretsmanager_secret.django_admin.arn,
       aws_secretsmanager_secret.grafana_admin.arn,
     ]
   }

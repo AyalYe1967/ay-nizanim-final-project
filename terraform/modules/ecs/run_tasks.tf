@@ -37,30 +37,21 @@ resource "aws_ecs_task_definition" "migrate" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.migrate_cpu
   memory                   = var.migrate_memory
-  execution_role_arn       = var.execution_role_arn
-  task_role_arn             = var.task_role_arn
+  execution_role_arn       = local.execution_role_arn
+  task_role_arn            = local.task_role_arn
 
   container_definitions = jsonencode([
     {
-      name    = "migrate"
-      image   = "${var.ecr_repository_url}:${var.image_tag}"
-      command = ["python", "manage.py", "migrate", "--noinput"]
-      environment = [
-        { name = "REDIS_HOST", value = var.redis_endpoint },
-        { name = "REDIS_PORT", value = tostring(var.redis_port) }
-      ]
-      secrets = [
-        { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
-        { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
-        { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
-        { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
-        { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
-        { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
-        { name = "DJANGO_ADMIN_USERNAME",  valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:username::" },
-        { name = "DJANGO_ADMIN_EMAIL",     valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:email::" },
-        { name = "DJANGO_ADMIN_PASSWORD",  valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:password::" },
+      name        = "migrate"
+      image       = "${var.ecr_repository_url}:${var.image_tag}"
+      command     = ["python", "manage.py", "migrate", "--noinput"]
+      environment = local.status_page_environment
+      secrets = concat(local.status_page_secrets, [
+        { name = "DJANGO_ADMIN_USERNAME", valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:username::" },
+        { name = "DJANGO_ADMIN_EMAIL", valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:email::" },
+        { name = "DJANGO_ADMIN_PASSWORD", valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:password::" },
         { name = "DJANGO_ADMIN_OTP_TOKEN", valueFrom = "${aws_secretsmanager_secret.django_admin.arn}:otp_token::" },
-      ]
+      ])
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -86,29 +77,16 @@ resource "aws_ecs_task_definition" "collectstatic" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.collectstatic_cpu
   memory                   = var.collectstatic_memory
-  execution_role_arn       = var.execution_role_arn
-  task_role_arn             = var.task_role_arn
+  execution_role_arn       = local.execution_role_arn
+  task_role_arn            = local.task_role_arn
 
   container_definitions = jsonencode([
     {
-      name    = "collectstatic"
-      image   = "${var.ecr_repository_url}:${var.image_tag}"
-      command = ["python", "manage.py", "collectstatic", "--noinput"]
-      environment = [
-        { name = "REDIS_HOST", value = var.redis_endpoint },
-        { name = "REDIS_PORT", value = tostring(var.redis_port) },
-        { name = "AWS_STORAGE_BUCKET_NAME", value = var.static_files_bucket_name },
-        { name = "AWS_S3_REGION_NAME", value = data.aws_region.current.region },
-        { name = "AWS_CLOUDFRONT_DOMAIN", value = var.static_files_cloudfront_domain }
-      ]
-      secrets = [
-        { name = "SECRET_KEY", valueFrom = aws_secretsmanager_secret.django_secret_key.arn },
-        { name = "POSTGRES_HOST", valueFrom = "${var.db_secret_arn}:host::" },
-        { name = "POSTGRES_PORT", valueFrom = "${var.db_secret_arn}:port::" },
-        { name = "POSTGRES_DB", valueFrom = "${var.db_secret_arn}:dbname::" },
-        { name = "POSTGRES_USER", valueFrom = "${var.db_secret_arn}:username::" },
-        { name = "POSTGRES_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" },
-      ]
+      name        = "collectstatic"
+      image       = "${var.ecr_repository_url}:${var.image_tag}"
+      command     = ["python", "manage.py", "collectstatic", "--noinput"]
+      environment = local.status_page_environment
+      secrets     = local.status_page_secrets
       logConfiguration = {
         logDriver = "awslogs"
         options = {

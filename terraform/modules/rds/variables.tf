@@ -17,7 +17,7 @@ variable "db_name" {
 variable "db_username" {
   description = "Master username for PostgreSQL"
   type        = string
-  default     = "statuspage_admin"
+  default     = "statuspage"
 }
 
 variable "instance_class" {

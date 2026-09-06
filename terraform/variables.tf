@@ -59,9 +59,24 @@ variable "container_port" {
 }
 
 variable "acm_certificate_arn" {
-  description = "ARN of the ACM certificate for the ALB HTTPS listener. Leave null until a domain exists - ALB serves HTTP only until then"
+  description = "Existing ACM certificate ARN for the custom domain. Leave null to let Terraform request a certificate when domain_name and route53_zone_id are set"
   type        = string
   default     = null
+  nullable    = true
+}
+
+variable "domain_name" {
+  description = "Public custom hostname for Status-Page, for example status.example.com. Leave null or empty to use the ALB DNS name over HTTP"
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "route53_zone_id" {
+  description = "Route53 public hosted-zone ID containing domain_name. When set, Terraform manages DNS validation, the ACM certificate, and the ALB alias record"
+  type        = string
+  default     = null
+  nullable    = true
 }
 
 variable "tags" {

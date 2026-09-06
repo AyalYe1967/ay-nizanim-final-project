@@ -7,7 +7,8 @@ external_task_role_arn      = "arn:aws:iam::123456789012:role/instructor-ecs-tas
 
 # The external execution role must trust ecs-tasks.amazonaws.com and allow ECR
 # image pulls, CloudWatch Logs writes, and Secrets Manager GetSecretValue for
-# the RDS, Django SECRET_KEY, and Grafana secrets created by this stack.
+# the RDS, Django SECRET_KEY, Django admin, and Grafana secrets created by this
+# stack.
 #
 # The external task role must trust ecs-tasks.amazonaws.com and allow scoped
 # access to the static/media S3 bucket, AMP remote write/query operations, and
@@ -19,3 +20,10 @@ grafana_image_tag    = "0000000"
 
 environment = "school"
 aws_region  = "us-east-1"
+
+# Optional trusted HTTPS/custom-domain configuration. If the DNS zone is in
+# Route53, omit acm_certificate_arn and Terraform will request and validate a
+# free ACM public certificate, then create the alias record to the ALB.
+# domain_name          = "status.example.com"
+# route53_zone_id      = "Z0123456789EXAMPLE"
+# acm_certificate_arn  = null

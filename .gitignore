@@ -9,3 +9,4 @@ destroy-plan
 .venv
 __pycache__/
 *.pyc
+*:Zone.Identifier

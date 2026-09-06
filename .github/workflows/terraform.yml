@@ -28,6 +28,9 @@ env:
   TF_VAR_create_iam_roles: "false"
   TF_VAR_external_execution_role_arn: "arn:aws:iam::992382545251:role/ay-l-final-project-ecs-execution-role-manual"
   TF_VAR_external_task_role_arn: "arn:aws:iam::992382545251:role/ay-l-final-project-ecs-task-role-manual"
+  TF_VAR_domain_name: ${{ vars.STATUS_PAGE_DOMAIN_NAME }}
+  TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
+  TF_VAR_acm_certificate_arn: ${{ vars.ACM_CERTIFICATE_ARN }}
 
 jobs:
   validate:
@@ -93,9 +96,6 @@ jobs:
       contents: read
       id-token: write
 
-    env:
-      CLUSTER: ay-l-final-project-cluster
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -117,6 +117,7 @@ jobs:
       - name: Read Terraform outputs
         id: tf
         run: |
+          echo "cluster=$(terraform -chdir=terraform output -raw ecs_cluster_name)" >> "$GITHUB_OUTPUT"
           echo "migrate_task_def=$(terraform -chdir=terraform output -raw migrate_task_definition_arn)" >> "$GITHUB_OUTPUT"
           echo "collectstatic_task_def=$(terraform -chdir=terraform output -raw collectstatic_task_definition_arn)" >> "$GITHUB_OUTPUT"
           echo "subnets=$(terraform -chdir=terraform output -json private_app_subnet_ids | jq -r 'join(",")')" >> "$GITHUB_OUTPUT"
@@ -125,13 +126,13 @@ jobs:
       - name: Run database migration
         run: |
           TASK_ARN=$(aws ecs run-task \
-            --cluster "$CLUSTER" \
+            --cluster "${{ steps.tf.outputs.cluster }}" \
             --task-definition "${{ steps.tf.outputs.migrate_task_def }}" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[${{ steps.tf.outputs.subnets }}],securityGroups=[${{ steps.tf.outputs.security_group }}],assignPublicIp=DISABLED}" \
             --query 'tasks[0].taskArn' --output text)
-          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
-          EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+          aws ecs wait tasks-stopped --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN" \
             --query 'tasks[0].containers[0].exitCode' --output text)
           if [ "$EXIT_CODE" != "0" ]; then
             echo "Migration failed with exit code $EXIT_CODE"
@@ -141,13 +142,13 @@ jobs:
       - name: Run collectstatic
         run: |
           TASK_ARN=$(aws ecs run-task \
-            --cluster "$CLUSTER" \
+            --cluster "${{ steps.tf.outputs.cluster }}" \
             --task-definition "${{ steps.tf.outputs.collectstatic_task_def }}" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[${{ steps.tf.outputs.subnets }}],securityGroups=[${{ steps.tf.outputs.security_group }}],assignPublicIp=DISABLED}" \
             --query 'tasks[0].taskArn' --output text)
-          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
-          EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+          aws ecs wait tasks-stopped --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN" \
             --query 'tasks[0].containers[0].exitCode' --output text)
           if [ "$EXIT_CODE" != "0" ]; then
             echo "collectstatic failed with exit code $EXIT_CODE"
@@ -157,14 +158,14 @@ jobs:
       - name: Bootstrap admin user
         run: |
           TASK_ARN=$(aws ecs run-task \
-            --cluster "$CLUSTER" \
+            --cluster "${{ steps.tf.outputs.cluster }}" \
             --task-definition "${{ steps.tf.outputs.migrate_task_def }}" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[${{ steps.tf.outputs.subnets }}],securityGroups=[${{ steps.tf.outputs.security_group }}],assignPublicIp=DISABLED}" \
             --overrides '{"containerOverrides":[{"name":"migrate","command":["python","manage.py","bootstrap_admin"]}]}' \
             --query 'tasks[0].taskArn' --output text)
-          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
-          EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+          aws ecs wait tasks-stopped --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "${{ steps.tf.outputs.cluster }}" --tasks "$TASK_ARN" \
             --query 'tasks[0].containers[0].exitCode' --output text)
           if [ "$EXIT_CODE" != "0" ]; then
             echo "bootstrap_admin failed with exit code $EXIT_CODE"
