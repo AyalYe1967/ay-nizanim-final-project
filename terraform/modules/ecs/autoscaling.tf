@@ -10,9 +10,9 @@
 resource "aws_appautoscaling_target" "web" {
   service_namespace  = "ecs"
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.web.name}"
-  scalable_dimension  = "ecs:service:DesiredCount"
-  min_capacity        = var.web_min_capacity
-  max_capacity        = var.web_max_capacity
+  scalable_dimension = "ecs:service:DesiredCount"
+  min_capacity       = var.web_min_capacity
+  max_capacity       = var.web_max_capacity
 }
 
 # --- Policy A: ALBRequestCountPerTarget (primary) ---
@@ -26,7 +26,7 @@ resource "aws_appautoscaling_policy" "web_request_count" {
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
-      resource_label          = "${var.alb_arn_suffix}/${var.web_target_group_arn_suffix}"
+      resource_label         = "${var.alb_arn_suffix}/${var.web_target_group_arn_suffix}"
     }
     target_value       = var.web_autoscaling_request_count_target
     scale_out_cooldown = 60
