@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "app/**"
+      - "monitoring/*"
       - ".github/workflows/pr-checks.yml"
   workflow_dispatch:
 
